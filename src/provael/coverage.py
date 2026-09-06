@@ -39,8 +39,8 @@ from pathlib import Path
 from provael.attacks.baseline import FAMILY as BASELINE_FAMILY
 from provael.attacks.controls import CONTROL_FAMILY
 from provael.attacks.registry import ATTACKS
-from provael.policies.registry import POLICIES
-from provael.suites import SUITES
+from provael.policies.registry import POLICIES, SCAFFOLDING_POLICIES
+from provael.suites import SCAFFOLDING_SUITES, SUITES
 
 #: Families that are registered and runnable but are NOT attacks: the benign FPR baseline and the
 #: harmless-variation controls. Both must be subtracted before counting "adversarial families",
@@ -78,6 +78,13 @@ class Coverage:
     real_policy_families: tuple[str, ...] = ()
     #: Registered adversarial families never run against a real policy, sorted.
     stub_only_families: tuple[str, ...] = field(default_factory=tuple)
+    #: Registered policy adapters DECLARED as scaffolding, sorted. Read from
+    #: :data:`~provael.policies.registry.SCAFFOLDING_POLICIES` rather than probed: the note on
+    #: :data:`~provael.suites.SCAFFOLDING_SUITES` records why a filesystem probe answers
+    #: differently in a checkout and in a wheel, and fails toward "measured".
+    scaffolding_policy_names: tuple[str, ...] = field(default_factory=tuple)
+    #: Registered suites DECLARED as scaffolding, sorted. Same reasoning.
+    scaffolding_suite_names: tuple[str, ...] = field(default_factory=tuple)
     #: Committed runs executed on physical hardware. Zero today; the website renders from it.
     hardware_results: int = 0
     #: False when no results directory was found at all — a pip-installed wheel, which does not
@@ -108,6 +115,28 @@ class Coverage:
     @property
     def stub_validated_only(self) -> int:
         return len(self.stub_only_families)
+
+    # ── Registered vs runnable ────────────────────────────────────────────────
+    # A third convention, and the one consumers kept getting wrong. `policies` and `suites` count
+    # what is REGISTERED; some of those are declared scaffolding and have never been run. The
+    # counts are properties rather than stored fields so they cannot drift from the name tuples
+    # above, exactly as `real_policy_tested` derives from `real_policy_families`.
+
+    @property
+    def scaffolding_policies(self) -> int:
+        return len(self.scaffolding_policy_names)
+
+    @property
+    def runnable_policies(self) -> int:
+        return self.policies - self.scaffolding_policies
+
+    @property
+    def scaffolding_suites(self) -> int:
+        return len(self.scaffolding_suite_names)
+
+    @property
+    def runnable_suites(self) -> int:
+        return self.suites - self.scaffolding_suites
 
 
 def _real_policy_families(results_dir: Path = RESULTS_DIR) -> set[str]:
@@ -165,6 +194,8 @@ def coverage(results_dir: Path = RESULTS_DIR) -> Coverage:
         suites=len(SUITES),
         real_policy_families=tuple(sorted(real)),
         stub_only_families=tuple(sorted(adversarial_families - real)),
+        scaffolding_policy_names=tuple(sorted(SCAFFOLDING_POLICIES)),
+        scaffolding_suite_names=tuple(sorted(SCAFFOLDING_SUITES)),
         hardware_results=_hardware_runs(results_dir),
         results_dir_present=results_dir.is_dir(),
     )
@@ -199,7 +230,13 @@ def coverage_json(cov: Coverage | None = None) -> str:
     return json.dumps(
         {
             "policies": c.policies,
+            "runnablePolicies": c.runnable_policies,
+            "scaffoldingPolicies": c.scaffolding_policies,
+            "scaffoldingPolicyNames": list(c.scaffolding_policy_names),
             "suites": c.suites,
+            "runnableSuites": c.runnable_suites,
+            "scaffoldingSuites": c.scaffolding_suites,
+            "scaffoldingSuiteNames": list(c.scaffolding_suite_names),
             "adversarialFamilies": c.adversarial_families,
             "adversarialAttacks": c.adversarial_attacks,
             "familiesTotal": c.families_total,
@@ -216,7 +253,10 @@ def coverage_json(cov: Coverage | None = None) -> str:
                 "families/attacks count what is REGISTERED. realPolicyTested counts families "
                 "exercised against a real policy in a real simulator (a measured 0% counts — this "
                 "project publishes nulls). stubValidatedOnly have never met a real model. "
-                "Registered is not validated."
+                "Registered is not validated. policies/suites count what is REGISTERED; "
+                "runnablePolicies/runnableSuites exclude the adapters and suites DECLARED as "
+                "scaffolding, which are implemented and unit-tested but have never been run. "
+                "Those two conventions are not interchangeable."
             ),
         },
         indent=2,

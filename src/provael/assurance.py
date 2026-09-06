@@ -155,7 +155,15 @@ def family_transfer_table(report: RunReport) -> list[dict[str, Any]]:
 
 
 def _iso_10218_2(report: RunReport) -> dict[str, Any]:
-    """ISO 10218-2:2025 cyber-risk-assessment evidence, routing to IEC 62443 SL2."""
+    """ISO 10218-2:2025 cyber-risk-assessment evidence, with Provael's own IEC 62443 SL2 view.
+
+    ``routes_to`` is PROVAEL'S crosswalk, not a deferral ISO 10218 makes. The 2025 revision adds
+    cybersecurity requirements to the extent they apply to industrial robot safety; its normative
+    references (Clause 2) do not include IEC 62443, which appears only in the informative
+    Bibliography alongside IEC TR 63074. The SL2 target is chosen here from the cell's exposure,
+    which is an IEC 62443 determination, and the emitted field name is kept because it is a
+    published contract that consumers parse.
+    """
     return {
         "instrument": "ISO 10218-2:2025 — robot applications & robot cells (cybersecurity clauses)",
         "role": "cyber-risk-assessment evidence input for AI-enabled robot cells "

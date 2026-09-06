@@ -292,3 +292,64 @@ The entry also now records Article 69(3) — the express derogation from 69(2) t
 in-scope installed base under Article 14 reporting while leaving it outside the product
 requirements, which is the clause most often missed.
 
+
+---
+
+## E-2026-05 — Two documents said ISO 10218:2025 defers its cyber detail to IEC 62443
+
+**Status:** corrected in the repository · no signed artifact is affected
+**Date raised:** 6 September 2026
+**Affects:** `docs/compliance/machinery-annex-i-part-a.md` and `docs/crosswalk/halos-integrator.md`, plus the `iso-10218-2` assurance profile's description in `docs/attestation.md` and its docstring in `src/provael/assurance.py`. No emitted artifact carried the claim: the OSCAL, SARIF and attestation payloads name the two standards as separate mappings and always did.
+
+### What was wrong
+
+Two documents stated that ISO 10218-1/-2:2025 hands its detailed cyber requirements to IEC 62443:
+
+```
+ISO 10218-1/-2:2025 cyber (which defers detailed cyber requirements to IEC 62443)
+ISO 10218-1/-2:2025 (cyber clauses, deferring detail to IEC 62443)
+```
+
+Two more places described Provael's own IEC 62443 SL2 view as something ISO 10218 routes to, rather
+than as a mapping Provael chose to publish.
+
+### What is correct
+
+Read on the ISO Online Browsing Platform, **Clause 2 Normative references** of ISO 10218-1:2025
+lists ISO 3864-x, ISO 4413/4414, ISO 7010, ISO 9283, ISO 12100, ISO 13732-x, ISO 13849-1:2023,
+ISO 13850, ISO 14118/14119/14120, ISO 19353, ISO 20607, ISO 20643 and IEC 60073. It contains no
+IEC 62443 and no IEC TR 63074.
+
+IEC 62443 appears in the **Bibliography**, which is informative, alongside IEC TR 63074.
+
+What the standard's own Foreword does say, and what this repository now says instead:
+
+```
+The main changes are as follows: [...] adding requirements for cybersecurity to the
+extent that it applies to industrial robot safety;
+```
+
+So the 2025 revision does add cybersecurity requirements. It does not delegate them. Provael's
+crosswalk to IEC 62443 is Provael's, and an assessor inherits nothing from ISO 10218 by reading it.
+
+### What this does and does not affect
+
+Nothing signed, and nothing machine-readable. The control identifiers, the `iec-62443:slv`
+requirement key and the emitted `routes_to` field are unchanged, because they are a published
+contract that consumers parse and because they were never the thing that was wrong. The defect was
+prose describing a relationship between two standards.
+
+The `iso-10218-2` and `iec-62443` assurance profiles both remain. A crosswalk to IEC 62443 is a
+legitimate thing to publish; presenting it as inherited from ISO 10218 was not.
+
+### What was changed to prevent recurrence
+
+The replacement wording states the provenance rather than the relationship: the 2025 revision adds
+cybersecurity requirements to the extent they apply to industrial robot safety, names IEC 62443 in
+an informative Bibliography, and Provael's mapping is separate and is Provael's.
+
+The reusable lesson is the same one E-2026-04 recorded, one level up. That entry was about pinning
+a sub-deadline to a secondary summary instead of the OJ text. This one is about a standards
+*relationship* taken from secondary description rather than from the standard's own Clause 2. The
+stronger version in circulation, "ISO 10218 requires IEC 62443 SL2", is wrong, and a claim an
+assessor can falsify by opening Clause 2 costs more than any count on this site.

@@ -94,8 +94,11 @@ signed statement (under `assurance`), mapping the *same* measured ASR + EAI find
 transfer results onto a framing an assessor or underwriter reads. Nothing is re-measured or
 re-scored — it reuses the shipped scoring, the compliance crosswalk, and the insurer report.
 
-- **`iso-10218-2`** — the per-EAI ASR as **ISO 10218-2:2025 cyber-risk-assessment evidence**, routed
-  to an **IEC 62443 SL2** target (a collaborative-robot cell's typical security level). Evidence
+- **`iso-10218-2`** — the per-EAI ASR as **ISO 10218-2:2025 cyber-risk-assessment evidence**,
+  alongside **Provael's own** mapping to an **IEC 62443 SL2** target (a collaborative-robot cell's
+  typical security level, which is an IEC 62443 determination from exposure). ISO 10218 does not
+  require IEC 62443: the 2025 revision adds cybersecurity requirements to the extent they apply to
+  industrial robot safety, and names IEC 62443 only in its informative Bibliography. Evidence
   *input* to the assessment, not a security-level achievement.
 - **`iec-62443`** — the ASR mapped to the applicable IEC 62443 foundational requirements (FR3 System
   Integrity; FR7 Resource Availability for the freeze/availability facet), toward an **SL2** case.

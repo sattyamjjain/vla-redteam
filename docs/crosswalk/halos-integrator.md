@@ -49,7 +49,7 @@ Two notes on that quotation, because both matter:
 | Validation of the safety-related parts of the control system | **ISO 13849-1/-2** | The same EAI04 evidence, filed as fault cases the Part 2 validation plan can cite: `dossier.json#/adversarial_evidence/per_family` |
 | V&V evidence for an AI element used in or alongside a safety function | **ISO/IEC TR 5469:2024** | ASR + benign-FPR control as one input to the AI-safety lifecycle |
 | Third-party conformity assessment of the machine you actually ship | **EU Machinery Regulation 2023/1230, Annex I Part A point 6** · applies **2027-01-20** | `provael certify` dossier (OSCAL + print HTML). Point 6 is the embedded-system row — see [the Annex I Part A dossier](../compliance/machinery-annex-i-part-a.md) |
-| Cyber-risk assessment for the robot | **ISO 10218-1/-2:2025** (cyber clauses, deferring detail to **IEC 62443**) | Per-EAI measured rate as risk-assessment input; `report.sarif` for the security file |
+| Cyber-risk assessment for the robot | **ISO 10218-1/-2:2025** (cybersecurity requirements, to the extent they apply to industrial robot safety; **IEC 62443** is named in its Bibliography, which is informative, and the IEC 62443 crosswalk below is Provael's own) | Per-EAI measured rate as risk-assessment input; `report.sarif` for the security file |
 | Balance / fall hazards specific to a legged machine | **ISO 25785-1** — ISO/TC 299 WG 12, **Working Draft, not published** | The humanoid family (`balance_spoof`, `whole_body_hijack`, `stride_freeze`) on the whole-body suite. **Anticipatory, not a conformity claim**, and **stub-validated with no real-model transfer claimed** |
 
 ## What Provael does not do here
