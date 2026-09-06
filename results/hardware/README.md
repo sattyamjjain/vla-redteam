@@ -66,20 +66,27 @@ a stated FPR — the data is public, so this is work rather than a blocker; a `B
 implementation wrapping an openpi client with that envelope at the action layer; a GPU host with a
 public IP to serve it. The first is the long pole and is a measurement, not an integration.
 
-**One number that was nearly published wrong, kept here because it is the useful part.** A draft
-covering letter for this submission stated that the benign control fires on 5 of 100 episodes. It
-does not, and no arm of the committed control run produces that figure:
+**One number this assessment got wrong, kept here because being wrong about a number is exactly
+what this directory is for.** A draft covering letter for this submission stated that the benign
+control fires on **5 of 100 episodes**. The first version of this section called that fabricated,
+on the grounds that no arm of the pinned control run produces it. That was a check of one run
+against a figure that pools two, and the draft was right:
 
-| Arm | Role | Measured |
+| Run | Tool version | Benign `none` arm |
 | --- | --- | --- |
-| `none` | benign control | 3/50 (6%) |
-| `benign_reword` | harmless variation | 1/50 (2%) |
-| `nonsense_text` | harmless variation | 0/50 (0%) |
+| `results/smolvla_libero_object_suite` | 0.32.0 | 2/50 |
+| `results/smolvla_libero_object_control` | 0.32.0 | 3/50 |
+| **Pooled** | | **5/100 — 5.0%, Wilson 95% [2.2%, 11.2%]** |
 
-The question the letter was reaching for is a good one and survives the correction: **the benign
-control fires on 3 of 50 simulated episodes, and nobody knows whether that rate holds on a real
-DROID cell.** That is the number a real-robot round would actually buy, and it is worth more than
-the leaderboard row.
+The pooled figure is also the better one, and it is not a reconstruction: issue #171 publishes
+exactly `5/100 (5.0%, Wilson 95% [2.2%, 11.2%])` and records that every firing lands on
+`libero_object/4` or `/5` while the other eight tasks stay silent through 80 benign episodes. A
+single-run 3/50 carries no interval and hides that clustering.
+
+The question the letter was reaching for survives intact and is the reason to want a real-robot
+round at all: **the benign control fires on 5 of 100 simulated episodes, clustered on two of ten
+tasks, and nobody knows whether that rate or that clustering holds on a real DROID cell.** That is
+what the round would buy, and it is worth more than the leaderboard row.
 
 ## Pre-registered: the RoboArena matched pair, 6 September 2026
 

@@ -42,11 +42,15 @@ All notable changes to this project are documented here. The format is based on
   bounds are the CPU fixture's benign envelope in the fixture's action space, which means nothing on
   a 7-DoF DROID cell. Picking replacements unexamined is what #136 was.
 
-  It also records a number that was nearly published wrong. A draft covering letter for that
-  submission stated the benign control fires on 5 of 100 episodes; it does not, and no arm of the
-  committed control run gives that figure — `none` is 3/50, `benign_reword` 1/50, `nonsense_text`
-  0/50. Kept in the file rather than quietly corrected, because the question underneath it is the
-  reason to want the round: whether 3-in-50 holds on a real cell is worth more than the row.
+  It also records a number this assessment got wrong. A draft covering letter for that submission
+  stated the benign control fires on 5 of 100 episodes, and the first version of this entry called
+  that fabricated on the grounds that no arm of the pinned control run produces it. That was a check
+  of one run against a figure that pools two, and the draft was right: `smolvla_libero_object_suite`
+  fires 2/50 and `smolvla_libero_object_control` fires 3/50, pooling to **5/100 — 5.0%, Wilson 95%
+  [2.2%, 11.2%]**, which is exactly what issue #171 publishes. The pooled figure is the better one:
+  a single-run 3/50 carries no interval and hides that every firing lands on `libero_object/4` or
+  `/5` while eight tasks stay silent through 80 benign episodes. Whether that rate and that
+  clustering hold on a real cell is worth more than the row.
 
   **Runs executed stays 0**; `provael coverage` still reports `hardware=0`.
 
