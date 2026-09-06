@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **A Codespaces badge, so the devcontainer has an entry point.** `.devcontainer/devcontainer.json`
+  has existed since 26 July — Python 3.12, the uv feature, `uv sync --locked` on create, ruff and
+  mypy extensions — and a grep for `codespaces` across the repo returned zero hits. A working
+  artifact with no way in is the same as no artifact. Placed beside "Open in Colab", the other
+  one-click entry point on the page.
+
+### Added
+
 - **`watch/measurements.json` — one ledger row per committed measurement.** `watch/freshness.json`
   answers *when was anything last measured* and collapses every run into one instant for a badge;
   `watch/registry.json` answers *how many attacks are registered*. Neither answers the question a
