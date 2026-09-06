@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- **`results/hardware/README.md` records what a real-robot leaderboard entry actually needs**, dated
+  6 September 2026 and assessed against RoboArena's September round. Three blockers, none of which
+  is time: nothing here speaks their inference API (`provael serve` is the ATTESTATION server —
+  `/healthz`, `/attest`, `/assurance-report`); the `openpi` adapter that would front a π0.5 policy is
+  scaffolding by our own declaration and has never been exercised; and `ActionEnvelopeClamp`'s
+  bounds are the CPU fixture's benign envelope in the fixture's action space, which means nothing on
+  a 7-DoF DROID cell. Picking replacements unexamined is what #136 was.
+
+  It also records a number that was nearly published wrong. A draft covering letter for that
+  submission stated the benign control fires on 5 of 100 episodes; it does not, and no arm of the
+  committed control run gives that figure — `none` is 3/50, `benign_reword` 1/50, `nonsense_text`
+  0/50. Kept in the file rather than quietly corrected, because the question underneath it is the
+  reason to want the round: whether 3-in-50 holds on a real cell is worth more than the row.
+
+  **Runs executed stays 0**; `provael coverage` still reports `hardware=0`.
+
 ## [0.39.5] — 2026-09-06
 
 ### Added
