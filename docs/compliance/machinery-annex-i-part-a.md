@@ -67,8 +67,10 @@ Each item is separately addressable in `dossier.json` (and rendered in `dossier.
    this run, and embodiments not covered.
 5. **Standards crosswalk** — each evidence item mapped to its clause: Machinery Regulation **Annex I
    Part A points 5 and 6** (Article 6(1) → Article 25(2)) and **Annex III** essential health & safety
-   requirements; **ISO 10218-1/-2:2025** cyber (which defers detailed cyber requirements to
-   **IEC 62443**); the functional-safety standards an accredited AI-safety inspection programme
+   requirements; **ISO 10218-1/-2:2025** cyber (the 2025 revision adds cybersecurity
+   requirements to the extent they apply to industrial robot safety, and names **IEC 62443** and
+   **IEC TR 63074** in its Bibliography, which is informative — Provael's own crosswalk to
+   IEC 62443 is separate and is not a requirement inherited from ISO 10218); the functional-safety standards an accredited AI-safety inspection programme
    assesses robot software against — **IEC 61508**, **ISO 13849-1/-2**, **ISO/IEC TR 5469:2024** (see
    the [Halos / ANAB integrator card](../crosswalk/halos-integrator.md)); the in-development
    **ISO 25785-1** for dynamically stable robots, carried as an anticipatory row because the
