@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.39.4] — 2026-09-06
+
 ### Fixed
 
 - **The Docker Hub mirror pointed at a namespace that does not exist.** `docker-publish.yml` has

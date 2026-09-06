@@ -106,6 +106,27 @@ def test_citation_version_matches_the_package() -> None:
     assert cff["version"] == __version__
 
 
+def test_readme_bibtex_version_matches_the_package() -> None:
+    """The README's BibTeX block is a SECOND copy of CITATION.cff, and nothing was checking it.
+
+    THE GAP THIS CLOSES. `_PIN_PATTERNS` matches `provael/provael@vX.Y.Z` action refs and
+    pre-commit `rev:` lines. A BibTeX `version = {X.Y.Z}` is neither, so cutting 0.39.4 bumped
+    eleven pin sites and left this one at 0.39.3 — found by grepping after the guard went green,
+    which is exactly the kind of catch that should not depend on someone thinking to grep.
+
+    It matters more than a normal restatement: the README says in the line above it that the
+    BibTeX is "the same metadata" as CITATION.cff, so a mismatch makes that sentence false, and
+    the artifact a citing paper pastes into a .bib would name a release its DOI does not describe.
+    """
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    found = re.findall(r"version\s*=\s*\{(\d+\.\d+\.\d+)\}", readme)
+    assert found, "no BibTeX `version = {X.Y.Z}` in README.md — the citation block moved or went"
+    assert set(found) == {__version__}, (
+        f"README BibTeX names {sorted(set(found))}, the package is {__version__}. The README calls "
+        "this block the same metadata as CITATION.cff; a mismatch makes that claim false."
+    )
+
+
 def test_the_scan_actually_finds_pins() -> None:
     """Guard the guard: a scan that silently matches nothing passes every assertion below.
 
@@ -323,7 +344,7 @@ def test_no_version_was_declared_and_then_quietly_skipped() -> None:
     was **renamed** to ``## [0.39.3]`` and ``__version__`` bumped alongside it, so the exemption's
     condition — newest dated heading equals ``__version__`` — stayed true through a second body of
     work. The escape hatch renews itself under renaming, and can do so indefinitely: the repo spent
-    2 to 4 September advertising ``provael/provael@v0.39.3`` in a README snippet while the newest
+    2 to 4 September advertising ``provael/provael@v0.39.4`` in a README snippet while the newest
     tag was v0.39.1, and every check in this file was green.
 
     This test asks the question the other one cannot: not "is the newest claim tagged" but "was any
