@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Docker Hub mirror pointed at a namespace that does not exist.** `docker-publish.yml` has
+  targeted `docker.io/provael/provael` since the mirror was written, gated on
+  `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN`. Those secrets were never set, so the branch never ran and
+  the wrong coordinate never surfaced. It now points at `docker.io/mndfreek/provael`.
+
+  **The namespaces differ on purpose.** GHCR stays `ghcr.io/provael/provael`, matching the GitHub
+  org. A Docker Hub *organisation* named `provael` requires a Docker Team plan at $15/seat/month —
+  $180/year to make one string match another string, for a mirror whose only job is discoverability.
+  The image bits are identical; only the coordinate differs, and the workflow comment records why so
+  the mismatch reads as a decision rather than a mistake.
+
 ### Added
 
 - **A Codespaces badge, so the devcontainer has an entry point.** `.devcontainer/devcontainer.json`
