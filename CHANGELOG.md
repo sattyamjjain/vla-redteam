@@ -14,7 +14,21 @@ All notable changes to this project are documented here. The format is based on
   artifact with no way in is the same as no artifact. Placed beside "Open in Colab", the other
   one-click entry point on the page.
 
-### Added
+- **A Binder environment, so the notebooks run without a Google account.** All five notebooks
+  carried only an "Open in Colab" badge, and Colab requires a sign-in. A reader who has to create
+  an account before running anything has already been asked to do work, on notebooks that exist so
+  nobody has to take the README's word for a number.
+
+  `binder/environment.yml` pins **Python 3.12**, not 3.11: `requires-python = ">=3.12"`, so a 3.11
+  image builds cleanly and then fails at the pip step, launching the badge into a broken kernel
+  with no obvious cause.
+
+  It deliberately does **not** pin the provael release. That would be theatre — notebook 01 runs
+  `%pip install -q provael` in its own second cell, so any pin here is replaced by latest the moment
+  the notebook runs — and it would rot unnoticed, because `test_version_consistency.py` matches
+  `provael/provael@vX.Y.Z` action refs and pre-commit `rev:` lines, not pip specifiers. Verified by
+  mutating a pin and watching the suite stay green, rather than assumed.
+
 
 - **`watch/measurements.json` — one ledger row per committed measurement.** `watch/freshness.json`
   answers *when was anything last measured* and collapses every run into one instant for a badge;
