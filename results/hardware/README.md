@@ -26,6 +26,60 @@ So: zero runs, said out loud, in the place a reader would look for the first one
 | Blocker | Physical hardware not yet in hand. The software path is installable (see below). |
 | What exists | The protocol, the `[hardware]` extra (resolves today), and a dry-run that validates the pipeline end to end against the stub policy. |
 
+## RoboArena, and what a real-robot entry actually needs — assessed 6 September 2026
+
+[RoboArena](https://robo-arena.github.io/) evaluates generalist robot policies on real DROID cells
+and publishes a leaderboard. It is the shortest published route from this project to a real-robot
+number, and the count above is the reason to want one. Its September 2026 round has a soft deadline
+of 8 September and a hard deadline of 13 September, and this was assessed against it. Recorded here
+rather than dropped, because "we looked and here is the gap" is the honest artifact and a
+leaderboard row we could not earn is not.
+
+**Three blockers, none of which is time.**
+
+1. **There is no policy server to submit.** RoboArena's form asks for a Server IP and Port and
+   whether the server implements their inference API — a `WebsocketPolicyServer` wrapping a
+   `BasePolicy`, conditioned on three camera views, returning joint-position action chunks, with
+   partial observations rejected. `provael serve` is the reference **attestation** server: it
+   exposes `/healthz`, `/attest` and `/assurance-report`, and it has never had anything to do with
+   robot inference. Nothing in this repository speaks that API, and answering "yes" to that question
+   would be false on a form.
+
+2. **The adapter that would front a π0.5 policy is scaffolding, by our own declaration.**
+   `SCAFFOLDING_POLICIES["openpi"]` reads *"also needs a running openpi policy server; not exercised
+   here"* — provael is a **client** of a policy server there, not a server. It has never been run
+   against a real openpi checkpoint. `provael list-policies` says so, the website now says so, and a
+   submission would be the first exercise of a path we publish as unexercised.
+
+3. **The gate has no bounds for a DROID cell, and inventing some is the failure this repo already
+   has a number for.** `ActionEnvelopeClamp` defaults to `BENIGN_DANGER_MAX = 0.0` and
+   `BENIGN_MOTION_L2_MAX = 0.1`, measured from the CPU fixture's benign envelope in the fixture's
+   own action space. DROID is 7-DoF joint position. Those scalars do not mean anything there.
+   Picking replacements unexamined is exactly what #136 was, `workspace.py` states in its own
+   docstring that the reachable bounds it computes are an observation and **deliberately not** a
+   calibrated keep-out zone, and the protocol this directory exists for already fixes the order:
+   calibrate from benign rollouts to a stated false-positive target **before** any attack runs.
+
+**What would close it, in order.** A keep-out envelope calibrated from DROID benign trajectories to
+a stated FPR — the data is public, so this is work rather than a blocker; a `BasePolicy`
+implementation wrapping an openpi client with that envelope at the action layer; a GPU host with a
+public IP to serve it. The first is the long pole and is a measurement, not an integration.
+
+**One number that was nearly published wrong, kept here because it is the useful part.** A draft
+covering letter for this submission stated that the benign control fires on 5 of 100 episodes. It
+does not, and no arm of the committed control run produces that figure:
+
+| Arm | Role | Measured |
+| --- | --- | --- |
+| `none` | benign control | 3/50 (6%) |
+| `benign_reword` | harmless variation | 1/50 (2%) |
+| `nonsense_text` | harmless variation | 0/50 (0%) |
+
+The question the letter was reaching for is a good one and survives the correction: **the benign
+control fires on 3 of 50 simulated episodes, and nobody knows whether that rate holds on a real
+DROID cell.** That is the number a real-robot round would actually buy, and it is worth more than
+the leaderboard row.
+
 ## The hardware this is written for
 
 | Item | Specification |
