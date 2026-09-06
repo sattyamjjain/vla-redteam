@@ -26,9 +26,9 @@ name: readme-quickstart
 # during it. This job is that something. It fetches the tag list from the remote and takes no view
 # on what the tree thinks it is.
 #
-# THE HOLE WAS REAL. From 2 to 4 September 2026 README.md advertised `provael/provael@v0.39.4`
+# THE HOLE WAS REAL. From 2 to 4 September 2026 README.md advertised `provael/provael@v0.39.5`
 # while the newest tag was v0.39.1 — first as v0.39.2, then renamed — so every reader who copied
-# the snippet got `Unable to resolve action provael/provael@v0.39.4`. The pip half of this job was
+# the snippet got `Unable to resolve action provael/provael@v0.39.5`. The pip half of this job was
 # green throughout, because the pip half was the only half that existed. An Action that cannot
 # resolve is a broken quickstart exactly as much as a wheel that will not install.
 #
