@@ -179,13 +179,29 @@ jobs:
           # code-derived registry, both owned by coverage-badge.yml. Writing `provael coverage
           # --json` over coverage.json would replace a badge with a different shape entirely.
           python scripts/gen_measurement_ledger.py
+
+          # DELETE THE LOG BEFORE REGENERATING THE BADGE. Not housekeeping — this is the bug the
+          # first version of this step shipped, on its first real run.
+          #
+          # `latest_measurement()` unions read_measurements(watch/) with the committed manifests and
+          # takes the max. The `--record` step above writes watch/watch.jsonl with `measured_at =
+          # _now()`, which is wall-clock at RECORD time; the manifest carries `ended_at`, which is
+          # when the run actually finished. On run 34051694289 those were 19:03:58 and 19:03:46. So
+          # the badge took 19:03:58 from a file this step then declined to commit, the ledger took
+          # 19:03:46 from the run that WAS committed, and
+          # test_newest_real_measurement_agrees_with_the_badge went red on main — correctly. The
+          # badge was asserting an instant no committed artifact supported.
+          #
+          # The log stays uncommitted for the reason below; what changed is that it is also gone
+          # before anything reads it. The badge now derives from exactly the tree that ships.
+          #
+          # WHY THE LOG IS NOT COMMITTED: the run is in results/, which is the one tree both the
+          # ledger and the badge read. Committing the log as well would put the same measurement in
+          # two places read by different code paths — the exact asymmetry that made committing the
+          # log ALONE unsafe.
+          rm -f watch/watch.jsonl watch/trials.jsonl
           provael watch --dir watch || true
 
-          # watch/watch.jsonl and watch/trials.jsonl are deliberately NOT committed. `--record`
-          # wrote them above and they are now redundant: the run is in results/, which is the one
-          # tree both the ledger and the badge read. Committing the log as well would put the same
-          # measurement in two places that are read by different code paths, which is the exact
-          # asymmetry that made committing the log ALONE unsafe.
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$dest" watch/measurements.json watch/freshness.json

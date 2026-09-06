@@ -8,6 +8,26 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **The freshness badge derives from what is committed, not from a file the lane then discards.**
+  The GPU lane's first successful commit — run 34051694289, and the run that took the site off its
+  build deadline — put `main` red. `latest_measurement()` unions `read_measurements(watch/)` with
+  the committed manifests and takes the max. `provael watch --record` had written
+  `watch/watch.jsonl` with `measured_at = _now()`, wall-clock at record time; the run's manifest
+  carries `ended_at`, when it actually finished. Those were `19:03:58Z` and `19:03:46Z`. So the
+  badge took the later instant from a log the same step then deliberately declined to commit, the
+  ledger took the earlier one from the run that WAS committed, and
+  `test_newest_real_measurement_agrees_with_the_badge` failed — correctly, because the badge was
+  asserting an instant no committed artifact supported.
+
+  The log is now deleted before the badge is regenerated. It stays uncommitted for the original
+  reason — the run is in `results/`, and putting one measurement in two trees read by different
+  code paths is the asymmetry that made committing the log alone unsafe — but it is also gone
+  before anything reads it. `gpu-arm.yml` never calls `--record`, so its badge already derived from
+  `results/` only.
+
+  The committed badge is corrected here too, not just the workflow: it now reads `19:03:46Z`, the
+  instant the manifest records.
+
 - **`gpu-arm.yml` keeps the run it pays for.** Same defect as the canary lane, one workflow over and
   an order of magnitude more expensive: this arm retrieved its Modal artifacts into a 90-day
   `upload-artifact` and committed nothing. The `calibrate` stage — ~$8, all ten `libero_object`
