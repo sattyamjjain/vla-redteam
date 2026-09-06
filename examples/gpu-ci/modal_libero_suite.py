@@ -476,7 +476,8 @@ def redteam(stage: str, task: str | None = None) -> str:
         volume.commit()
         return (
             f"exit={done.returncode}\nstage=calibrate elapsed={elapsed:.0f}s over "
-            f"{planned} benign rollouts\nartifacts: {out} (calibration.json)"
+            f"{planned} benign rollouts\nartifacts: {out} "
+            f"(smolvla__libero__<task>.json, one per task — NOT calibration.json)"
         )
 
     cmd = [
@@ -686,12 +687,20 @@ def main() -> None:
     for out in redteam.starmap([(STAGE, t) for t in tasks]):
         print(out)
     # `aggregate` reads each shard's report.json and runs the cross-task statistics. `calibrate`
-    # writes calibration.json and no report.json at all, so aggregating it would either raise or —
-    # worse — emit an empty aggregate that looks like a completed cross-shard result. Skip it and
-    # say so, rather than shipping a stage whose summary silently describes nothing.
+    # writes no report.json at all, so aggregating it would either raise or — worse — emit an empty
+    # aggregate that looks like a completed cross-shard result. Skip it and say so, rather than
+    # shipping a stage whose summary silently describes nothing.
+    #
+    # THE FILENAME, CORRECTED. This said "calibration.json" in three places and `provael calibrate`
+    # has never written a file by that name: `calibration.py:_artifact_name` returns
+    # `f"{policy}__{suite}__{safe_task}.json"`, so a LIBERO shard writes
+    # `smolvla__libero__libero_object_4.json`. An operator following the old instruction would have
+    # gone looking for a file that does not exist, on the one stage nobody has ever run — which is
+    # how a wrong instruction survives. The directory retrieval below was always right.
     if STAGE == "calibrate":
-        print("[local] calibrate writes calibration.json per shard; no cross-shard aggregate is "
-              "computed. Retrieve with: modal volume get provael-libero-runs "
+        print("[local] calibrate writes one artifact per task, named "
+              "smolvla__libero__<task>.json — there is no calibration.json. No cross-shard "
+              "aggregate is computed. Retrieve with: modal volume get provael-libero-runs "
               "libero_object_calibrate")
         return
     print(aggregate.remote(STAGE))

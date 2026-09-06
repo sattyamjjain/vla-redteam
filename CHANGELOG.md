@@ -8,6 +8,28 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **`gpu-arm.yml` keeps the run it pays for.** Same defect as the canary lane, one workflow over and
+  an order of magnitude more expensive: this arm retrieved its Modal artifacts into a 90-day
+  `upload-artifact` and committed nothing. The `calibrate` stage — ~$8, all ten `libero_object`
+  tasks, benign-only, and the run issue #171 has been waiting on — would have produced a fitted
+  per-task envelope that aged out of GitHub before anything consumed it, leaving `CALIBRATED_ZONES`
+  empty and `provael doctor` still printing `calibrated zones none`.
+
+  Two destinations, because the stages produce two different things. `calibrate` writes per-task
+  calibration artifacts and no `report.json`; those are a fitted predicate rather than a
+  measurement, so they land in `results/calibration/` where `--calib` reads them and where the
+  measurement ledger cannot see them — it walks `results/**` for `execution-manifest.json`, and a
+  calibration artifact has none. Verified rather than assumed: adding a directory there moves no
+  count in `provael coverage` and leaves `gen_measurement_ledger.py --check` green. Every other
+  stage writes a report and a manifest, which are measurements, and land in `results/<stage>/`.
+
+- **`provael calibrate` has never written a file called `calibration.json`**, and
+  `modal_libero_suite.py` told operators to look for one in three places — a return string, a
+  comment, and the retrieval instruction printed at the end of the stage. `calibration.py` names its
+  artifacts `<policy>__<suite>__<task>.json`, so a LIBERO shard writes
+  `smolvla__libero__libero_object_4.json`. The wrong name survived because this is the one stage
+  nobody has ever run.
+
 - **The scheduled GPU lane keeps the measurement it produces.** Fifth failure of the family behind
   #181 and #188, and the first where everything worked. `provael watch --record` appends to
   `watch/watch.jsonl` in the RUNNER'S tree; the job declared `contents: read`, checked out with

@@ -61,6 +61,12 @@ permissions:
 jobs:
   arm:
     if: ${{ vars.ENABLE_GPU_SCHEDULED == 'true' }}
+    # WRITE, because an arm that only uploads is an arm whose result expires. See "Keep the run"
+    # below: this lane retrieved its artifacts into a 90-day workflow artifact and committed
+    # nothing, so the ~$8 `calibrate` stage — the one issue #171 has been waiting on — would have
+    # produced a fitted envelope that aged out of GitHub before anything consumed it.
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -79,9 +85,9 @@ jobs:
           fi
           echo "confirmed: $STAGE"
 
+      # No `persist-credentials: false` here, unlike most checkouts in this repo: "Keep the run"
+      # below has to push the artifacts this arm paid for. Scoped by `contents: write` on the job.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -139,6 +145,69 @@ jobs:
           modal volume get provael-libero-runs "libero_object_${STAGE}" artifacts/ || \
             echo "::warning::nothing retrieved from the volume for stage ${STAGE}"
           find artifacts -type f | head -50
+
+      # KEEP THE RUN. Same defect as gpu-scheduled.yml carried for five runs, one lane over: the
+      # measurement happens, and nothing keeps it. There it was `contents: read` plus a discarded
+      # working tree; here it is a 90-day `upload-artifact` and no commit at all.
+      #
+      # TWO SHAPES, because the stages produce two different things and putting them in one place
+      # would be wrong in both directions:
+      #
+      #   * `calibrate` writes per-task calibration artifacts (smolvla__libero__<task>.json) and NO
+      #     report.json. Those are a fitted predicate, not a measurement, so they land in
+      #     results/calibration/ where `--calib` can read them and where the measurement ledger —
+      #     which walks results/** for execution-manifest.json — cannot see them. Verified: adding
+      #     a directory there moves no count in `provael coverage` and leaves the ledger --check
+      #     green.
+      #   * every other stage writes report.json + execution-manifest.json, which ARE measurements
+      #     and belong in results/<stage>/ where the ledger and the freshness badge both read them.
+      #
+      # `if: success()` and not `always()`: a failed or partial run must not commit a half-shard as
+      # though it were a result. The upload below stays `always()`, so a failure still leaves the
+      # operator the log and whatever was retrieved.
+      - name: Keep the run
+        if: success()
+        shell: bash
+        env:
+          STAGE: ${{ inputs.stage }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(find artifacts -type f 2>/dev/null)" ]; then
+            echo "::error::the stage reported success and retrieved no artifacts. Nothing to keep,"
+            echo "::error::which means the spend produced nothing — the defect this step exists for."
+            exit 1
+          fi
+
+          if find artifacts -name '*__*__*.json' | grep -q .; then
+            dest="results/calibration"
+          else
+            dest="results/$STAGE"
+          fi
+          mkdir -p "$dest"
+          cp -R artifacts/. "$dest"/
+          echo "placed the run at $dest"
+
+          # Only regenerate what results/ actually feeds. A calibration commit changes neither, and
+          # running them anyway is free and keeps the two paths identical.
+          python scripts/gen_measurement_ledger.py
+          provael watch --dir watch || true
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest" watch/measurements.json watch/freshness.json
+          if git diff --cached --quiet; then
+            echo "::error::artifacts were retrieved and git sees nothing to commit."
+            exit 1
+          fi
+          git commit -m "chore(results): keep the ${STAGE} GPU arm [skip ci]"
+          for attempt in 1 2 3; do
+            if git push; then echo "pushed on attempt $attempt"; exit 0; fi
+            echo "push rejected, rebasing (attempt $attempt)"
+            git pull --rebase --autostash
+          done
+          echo "::error::could not push after 3 attempts. The run exists in this runner and nowhere"
+          echo "::error::else — which is how every previous version of this bug lost its data."
+          exit 1
 
       - name: Upload the run
         if: always()
