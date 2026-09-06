@@ -6,6 +6,47 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two documents said ISO 10218:2025 defers its cyber detail to IEC 62443. It does not.**
+  `docs/compliance/machinery-annex-i-part-a.md` carried "which defers detailed cyber requirements
+  to IEC 62443" and `docs/crosswalk/halos-integrator.md` carried "cyber clauses, deferring detail
+  to IEC 62443". Two more places described Provael's own SL2 view as something ISO 10218 routes to.
+
+  Corrected by reading **Clause 2 Normative references** on the ISO Online Browsing Platform, not by
+  inferring it from a missing citation. Clause 2 lists ISO 3864-x, ISO 4413/4414, ISO 7010,
+  ISO 9283, ISO 12100, ISO 13732-x, ISO 13849-1:2023, ISO 13850, ISO 14118/14119/14120, ISO 19353,
+  ISO 20607, ISO 20643 and IEC 60073. IEC 62443 and IEC TR 63074 appear only in the Bibliography,
+  which is informative. The Foreword does say the revision adds "requirements for cybersecurity to
+  the extent that it applies to industrial robot safety", and that part is kept.
+
+  **Four sites, and two were found by grep rather than named:** the machinery Annex I card and the
+  `_iso_10218_2` docstring in `src/provael/assurance.py`. Four other candidates carry no such claim
+  and were left alone, because "Maps to" and "cross-map to" already read as Provael's own crosswalk
+  and rewriting them would have degraded accurate text.
+
+  Nothing machine-readable moved. `_IEC`, the `iec-62443:slv` key, every control identifier and the
+  emitted `routes_to` field are a published contract and were never the defect. Recorded as
+  **E-2026-05** in `docs/errata.md`.
+
+### Added
+
+- **`watch/registry.json` publishes the registered/runnable split.** It carried `policies: 8` and
+  `suites: 6` as bare integers while the code already declared which of those are scaffolding, and
+  `list-policies` / `list-suites` already rendered that. `coverage_json()` never exported it, so a
+  consumer wanting the runnable number typed one: www.provael.com publishes "5 suites" beside a
+  registry saying 6.
+
+  Now `runnablePolicies`, `scaffoldingPolicies`, `runnableSuites`, `scaffoldingSuites`, plus
+  `scaffoldingPolicyNames` and `scaffoldingSuiteNames` so a consumer can render which rather than
+  only how many. **8 = 5 + 3**, **6 = 5 + 1**.
+
+  The counts are properties over the name tuples rather than stored fields, so they cannot drift
+  from the declaration they came from, and the split is read from `SCAFFOLDING_POLICIES` /
+  `SCAFFOLDING_SUITES` rather than probed — a filesystem probe answers differently in a checkout
+  and in a wheel, and fails toward "measured". A test asserts the split is identical with
+  `results/` absent.
+
 ## [0.39.4] — 2026-09-06
 
 ### Fixed
