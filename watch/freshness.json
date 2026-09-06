@@ -1,9 +1,9 @@
 {
   "cacheSeconds": 3600,
-  "color": "red",
-  "isError": true,
+  "color": "brightgreen",
+  "isError": false,
   "label": "last measured",
-  "measuredAt": "2026-08-09T14:46:00Z",
-  "message": "27 days ago",
+  "measuredAt": "2026-09-06T19:03:58Z",
+  "message": "today",
   "schemaVersion": 1
 }
