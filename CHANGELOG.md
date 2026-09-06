@@ -15,7 +15,10 @@ All notable changes to this project are documented here. The format is based on
   the one fact a consumer restates most often was the one it could not derive. www.provael.com kept
   its own copy refreshed on the release cadence: on 6 September 2026, 14 of its built pages rendered
   v0.39.3 while the tag, the GitHub release and PyPI all said 0.39.4. The worst of them was
-  `/security`, telling a reporter to reproduce on "the latest release on PyPI (currently v0.39.3)".
+  `/security`, which named that superseded release as the one a reporter should reproduce on before
+  filing. (Not quoted verbatim here: www.provael.com renders this file at /changelog, and its
+  `check:versions` guard reads a currency-claim sentence on a rendered page as a live claim,
+  correctly — it cannot tell a quotation from an assertion.)
 
   Every value derives from `provael.__version__`. There is deliberately **no commit sha and no
   published_at**: the generator runs offline and could only guess at them, and an unverifiable field
