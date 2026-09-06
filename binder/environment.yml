@@ -1,0 +1,28 @@
+# Binder environment for the notebooks in notebooks/.
+#
+# WHY THIS EXISTS. All five notebooks carry an "Open in Colab" badge, and Colab requires a Google
+# account. A reader who must create an account before running anything has already been asked to do
+# work, and these notebooks exist so nobody has to take the README's word for a number. Binder needs
+# no account.
+#
+# PYTHON 3.12, NOT 3.11. `pyproject.toml` sets `requires-python = ">=3.12"`. A 3.11 image builds
+# fine and then fails at the pip step, so the badge would launch into a broken kernel with no
+# obvious cause. This is the one line here that is not a preference.
+#
+# DELIBERATELY UNPINNED, and this is the interesting choice. Pinning a release looks more
+# reproducible and would be theatre: notebook 01 runs `%pip install -q provael` in its own second
+# cell, so whatever this file pins is replaced by latest the moment the notebook runs. A pin here
+# would also rot silently — `tests/test_version_consistency.py` matches `provael/provael@vX.Y.Z`
+# action refs and pre-commit `rev:` lines, NOT pip specifiers, so nothing in the gate would notice
+# a stale one. Checked by mutating the pin and watching the suite stay green, rather than assumed.
+#
+# CPU ONLY. Notebook 01 states in its own first cell that it runs the whole engine on a CPU. The
+# GPU-gated paths (the `lerobot` extra, LIBERO) are optional and are deliberately absent here.
+name: provael
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - provael
