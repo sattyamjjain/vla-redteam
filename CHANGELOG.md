@@ -8,6 +8,32 @@ All notable changes to this project are documented here. The format is based on
 
 ### Documentation
 
+- **The RoboArena matched pair is pre-registered**, in `results/hardware/README.md`, before any data
+  exists and while still blocked — fixing the prediction is free today and impossible later. A base
+  policy unmodified against the same policy with the keep-out predicate at the action layer, one flag
+  apart, so the cost of the gate is readable off the board rather than asserted here.
+
+  **Stated in win rate, not Elo.** RoboArena's own paper positions its ranking against both standard
+  Elo and conventional Bradley-Terry, because Bradley-Terry assumes each pairwise comparison happens
+  under identical conditions and free task choice violates that. A threshold in Elo would be a
+  threshold in a unit the venue does not report. Registered instead: the gated arm wins under 50% of
+  head-to-head comparisons against its own twin (a clamp can only remove motion), predicted at or
+  above 40%, abandoned below 25%, and nothing read before 50 comparisons. If the gated arm wins MORE
+  often, that is not a win for the gate — it is evidence the predicate is correlated with task
+  structure, and it will be reported in those words.
+
+  **The base is `paligemma_fast_droid` and the criterion is what is registered**: the base must be
+  reproducible, robot data and pre-trained weights public. `pi05_droid` was the initial plan and
+  fails that test, because Pi's pre-training data is not released — which by RoboArena's own
+  definition puts "open-source: No" on the row and yields a number no outside party can re-derive.
+
+  **There is no deadline, and an earlier draft said there was.** The CoRL round carrying the
+  8 September soft and 13 September hard deadlines was CoRL **2025** — that page reads "Conference on
+  Robot Learning, 2025", its call for papers closed 17 September 2025 and its workshop was held
+  27 September 2025. Those dates were projected onto 2026 off a stale page. The form is live and the
+  platform is active (public data dump dated 17 July 2026), but nothing is closing, and the false
+  urgency was about to buy a rushed submission.
+
 - **`results/hardware/README.md` records what a real-robot leaderboard entry actually needs**, dated
   6 September 2026 and assessed against RoboArena's September round. Three blockers, none of which
   is time: nothing here speaks their inference API (`provael serve` is the ATTESTATION server —
