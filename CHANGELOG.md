@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.39.5] — 2026-09-06
+
 ### Added
 
 - **`watch/release.json`, so a consumer derives the release instead of copying it.** `watch/` had

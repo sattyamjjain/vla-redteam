@@ -344,7 +344,7 @@ def test_no_version_was_declared_and_then_quietly_skipped() -> None:
     was **renamed** to ``## [0.39.3]`` and ``__version__`` bumped alongside it, so the exemption's
     condition — newest dated heading equals ``__version__`` — stayed true through a second body of
     work. The escape hatch renews itself under renaming, and can do so indefinitely: the repo spent
-    2 to 4 September advertising ``provael/provael@v0.39.4`` in a README snippet while the newest
+    2 to 4 September advertising ``provael/provael@v0.39.5`` in a README snippet while the newest
     tag was v0.39.1, and every check in this file was green.
 
     This test asks the question the other one cannot: not "is the newest claim tagged" but "was any
