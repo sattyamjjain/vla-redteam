@@ -20,7 +20,7 @@ PY := uv run python
 .DEFAULT_GOAL := help
 .PHONY: help install lint typecheck test check check-docs check-doc-counts fix-doc-counts \
 	check-links check-leaderboard check-issue-labels gen-registry gen-schemas \
-	check-measurement-ledger gen-measurement-ledger
+	check-measurement-ledger gen-measurement-ledger check-release gen-release
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -47,13 +47,19 @@ check: lint typecheck test ## The full pre-push gate
 
 # ── Documentation integrity ──────────────────────────────────────────────────
 
-check-docs: check-doc-counts check-measurement-ledger check-links ## Every doc gate that runs offline
+check-docs: check-doc-counts check-measurement-ledger check-release check-links ## Every doc gate that runs offline
 
 check-doc-counts: ## Fail if a generated inventory line is stale
 	$(PY) scripts/gen_doc_counts.py --check
 
 fix-doc-counts: ## Rewrite the generated inventory lines from the registries
 	$(PY) scripts/gen_doc_counts.py
+
+check-release: ## Fail if watch/release.json disagrees with provael.__version__
+	$(PY) scripts/gen_release_artifact.py --check
+
+gen-release: ## Rewrite watch/release.json from provael.__version__
+	$(PY) scripts/gen_release_artifact.py
 
 check-measurement-ledger: ## Fail if watch/measurements.json is stale
 	$(PY) scripts/gen_measurement_ledger.py --check

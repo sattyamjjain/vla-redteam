@@ -86,6 +86,14 @@ jobs:
         # counts from this file rather than restating them in prose.
         run: uv run python scripts/gen_registry_artifact.py
 
+      - name: Publish the current release alongside them
+        # Same rule again: a property of the installed package that a consumer would otherwise keep
+        # its own copy of. www.provael.com served v0.39.3 on 14 pages while the tag and PyPI said
+        # 0.39.4, because the copy was refreshed on the release cadence by hand. Regenerated here as
+        # a safety net; the release PR commits it too, and tests/test_release_artifact.py fails if
+        # the two ever disagree.
+        run: uv run python scripts/gen_release_artifact.py
+
       - name: Commit the badge if it changed
         run: |
           # BOTH FILES, and the plural in this step's commit message has been a lie since the
@@ -95,13 +103,13 @@ jobs:
           # — the same shape as the GPU lane measuring and discarding (#181). It never surfaced
           # because `tests/test_registry_artifact_agrees.py` fails the next PR instead, which turns
           # a self-healing job into a chore for whoever pushes next.
-          if git diff --quiet -- watch/coverage.json watch/registry.json; then
-            echo "coverage badge and registry counts both unchanged"
+          if git diff --quiet -- watch/coverage.json watch/registry.json watch/release.json; then
+            echo "coverage badge, registry counts and release artifact all unchanged"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add watch/coverage.json watch/registry.json
+          git add watch/coverage.json watch/registry.json watch/release.json
           # [skip ci] is belt-and-braces, and the braces matter more than they look.
           # This job writes watch/coverage.json, which sits inside freshness.yml's
           # `paths: ["watch/**"]` trigger — so this commit would fire THAT workflow, and
@@ -110,5 +118,5 @@ jobs:
           # implicit and evaporates the day someone swaps in a PAT or deploy key to make bot
           # commits visible to CI, which is a normal thing to want. The paths allow-list above
           # already stops THIS workflow retriggering itself; this stops the cross-trigger too.
-          git commit -m "chore(ci): refresh the coverage badge and registry counts [skip ci]"
+          git commit -m "chore(ci): refresh the coverage badge, registry counts and release artifact [skip ci]"
           git push
