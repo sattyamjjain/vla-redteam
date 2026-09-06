@@ -30,7 +30,13 @@ NOTE = (
     "surfaces disagreed simultaneously before it existed. adversarialFamilies and "
     "adversarialAttacks EXCLUDE the `baseline` and `control` families; familiesTotal and "
     "attacksTotal include them. Those two conventions are not interchangeable, and mixing them "
-    "is how a coverage claim inflates by one family."
+    "is how a coverage claim inflates by one family. A THIRD convention sits beside those two: "
+    "policies and suites count what is REGISTERED, while runnablePolicies and runnableSuites "
+    "exclude the adapters and suites DECLARED as scaffolding — implemented and unit-tested, but "
+    "never once run. scaffoldingPolicyNames and scaffoldingSuiteNames say which, so a consumer can "
+    "render the reason rather than only the shortfall. Registered and runnable are not "
+    "interchangeable either, and reading the registered total as the runnable one is how "
+    "www.provael.com came to publish 5 suites beside a registry that said 6."
 )
 
 
