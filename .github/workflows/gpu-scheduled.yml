@@ -49,14 +49,19 @@ permissions:
 
 jobs:
   gpu-redteam:
+    # WRITE, because the measurement has to survive the runner. See "Keep the measurement" below:
+    # for five runs this lane measured, recorded, and threw the record away with the container.
+    permissions:
+      contents: write
     # Opt-in only: no variable set -> no run -> no spend.
     if: ${{ vars.ENABLE_GPU_SCHEDULED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
+      # persist-credentials: true, deliberately. This was false, which is the right default for a
+      # lane that only reads — and this one has to push the measurement it produces or the whole
+      # run is discarded. Scoped by `permissions: contents: write` on the job above.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          persist-credentials: false
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -128,6 +133,86 @@ jobs:
           pip install --quiet -e .
           provael watch --record "$outdir" --dir watch
           echo "recorded $outdir/report.json"
+          echo "OUTDIR=$outdir" >> "$GITHUB_ENV"
+
+      # KEEP THE MEASUREMENT. The fifth failure of this lane, and the first where everything worked.
+      #
+      # `provael watch --record` appends to watch/watch.jsonl and watch/trials.jsonl in the RUNNER'S
+      # working tree. This job declared `contents: read`, checked out with `persist-credentials:
+      # false`, and uploaded only the log. So on 5 September 2026 run 33974192486 reached a real
+      # policy, printed `Adversarial ASR: 33.3% (4/12)`, logged `recorded smolvla x libero (4/14)
+      # measured with provael 0.39.1` — and the container shut down and took it with it. Neither
+      # watch.jsonl nor trials.jsonl has ever existed in this repository. freshness.yml recomputed
+      # the next morning from what was committed, found nothing new, and watch/freshness.json stayed
+      # at 2026-08-09. www.provael.com fails its own build once that passes 30 days.
+      #
+      # COMMITTING watch.jsonl ALONE WOULD HAVE BEEN WORSE THAN NOTHING, and this was simulated
+      # before it was written. `latest_measurement()` unions the watch log with the committed
+      # manifests; `scripts/gen_measurement_ledger.py` reads ONLY results/. So the badge would have
+      # gone brightgreen while the ledger's newest row stayed a month old, and
+      # test_measurement_ledger.py::test_newest_real_measurement_agrees_with_the_badge would have
+      # failed — correctly. www.provael.com renders that ledger on /results, so the shipped state
+      # would have been a green "measured today" banner above a table whose newest row was August.
+      #
+      # So the run is committed to results/, which is what results/ is for, and both surfaces read
+      # the same tree. Simulated against a copy of results/ first: ledger row present with a real
+      # artifactPath, badge and ledger agreeing on the instant.
+      #
+      # WHAT THIS GROWS. Three small JSON/Markdown files twice a week, roughly 2 MB a year, and two
+      # ledger rows a week on /results. That is readable now and will not be forever; when it stops
+      # being readable the answer is pagination on the page, never pruning the record here.
+      - name: Keep the measurement
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          ended="$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['ended_at'])" \
+            "$OUTDIR/execution-manifest.json")"
+          dest="results/gpu-scheduled/$(echo "$ended" | tr -d ':-')"
+          mkdir -p "$dest"
+          cp "$OUTDIR"/*.json "$OUTDIR"/*.md "$dest"/ 2>/dev/null || cp "$OUTDIR"/*.json "$dest"/
+          echo "placed the run at $dest"
+
+          # Regenerate exactly the two artifacts derived from results/, so neither can disagree
+          # with the tree it is derived from. NOT watch/coverage.json or watch/registry.json:
+          # despite living in the same directory those are a shields.io TEST-coverage badge and a
+          # code-derived registry, both owned by coverage-badge.yml. Writing `provael coverage
+          # --json` over coverage.json would replace a badge with a different shape entirely.
+          python scripts/gen_measurement_ledger.py
+          provael watch --dir watch || true
+
+          # watch/watch.jsonl and watch/trials.jsonl are deliberately NOT committed. `--record`
+          # wrote them above and they are now redundant: the run is in results/, which is the one
+          # tree both the ledger and the badge read. Committing the log as well would put the same
+          # measurement in two places that are read by different code paths, which is the exact
+          # asymmetry that made committing the log ALONE unsafe.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$dest" watch/measurements.json watch/freshness.json
+          if git diff --cached --quiet; then
+            echo "::error::the run produced $dest and git sees nothing to commit. The measurement"
+            echo "::error::is about to be discarded again — this is the defect this step exists for."
+            exit 1
+          fi
+          # [skip ci]: this lands in watch/**, which triggers freshness.yml — a self-retrigger loop
+          # masked only by GitHub declining to run workflows on GITHUB_TOKEN pushes. Same note as
+          # freshness.yml carries; do not rely on that alone.
+          git commit -m "chore(results): keep the scheduled GPU measurement [skip ci]"
+
+          # Rebase-and-retry rather than fail: freshness.yml and coverage-badge.yml also push to
+          # main on their own schedules, and losing a real GPU measurement to a race would be the
+          # sixth version of this bug.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push rejected, rebasing (attempt $attempt)"
+            git pull --rebase --autostash
+          done
+          echo "::error::could not push the measurement after 3 attempts. It exists in this runner"
+          echo "::error::and nowhere else, which is exactly how the previous five were lost."
+          exit 1
 
       - name: Upload the run artifact
         if: always()
