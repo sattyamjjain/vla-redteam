@@ -6,6 +6,31 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **The scheduled GPU lane keeps the measurement it produces.** Fifth failure of the family behind
+  #181 and #188, and the first where everything worked. `provael watch --record` appends to
+  `watch/watch.jsonl` in the RUNNER'S tree; the job declared `contents: read`, checked out with
+  `persist-credentials: false`, and uploaded only the log. So on 5 September run 33974192486 reached
+  a real policy, printed `Adversarial ASR: 33.3% (4/12)`, logged `recorded smolvla × libero (4/14)
+  measured with provael 0.39.1` — and the container took it with it. Neither `watch.jsonl` nor
+  `trials.jsonl` has ever existed in this repository.
+
+  **Committing the watch log alone would have been worse than nothing, and that was simulated before
+  this was written.** `latest_measurement()` unions the log with the committed manifests;
+  `gen_measurement_ledger.py` reads only `results/`. The badge would have gone brightgreen while the
+  ledger's newest row stayed a month old, and `test_newest_real_measurement_agrees_with_the_badge`
+  fails on exactly that — correctly, because www.provael.com renders that ledger on /results, so the
+  shipped state would have been a green "measured today" banner over a table whose newest row was
+  August.
+
+  The run is now committed to `results/gpu-scheduled/<ended_at>/`, which is what `results/` is for,
+  and the ledger and the badge are regenerated from that one tree. Not `watch/coverage.json` or
+  `watch/registry.json`: despite the shared directory those are a shields.io test-coverage badge and
+  a code-derived registry owned by `coverage-badge.yml`. The push rebases and retries three times,
+  because `freshness.yml` and `coverage-badge.yml` also push to `main` and losing a real GPU
+  measurement to a race would be the sixth version of this bug.
+
 ### Documentation
 
 - **The RoboArena matched pair is pre-registered**, in `results/hardware/README.md`, before any data
