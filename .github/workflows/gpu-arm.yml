@@ -96,6 +96,15 @@ jobs:
       - name: Install the Modal client
         run: pip install "modal>=0.64"
 
+      # provael itself, because "Keep the run" regenerates the ledger and the badge and both import
+      # it. gpu-scheduled.yml installs it inside its record step; this workflow did not, and the
+      # commit logic was copied across without the dependency it needs. The calibrate arm on
+      # 6 September 2026 ran to completion, retrieved all ten per-task calibrations, printed
+      # "placed the run at results/calibration" — and then died on `import provael` under
+      # `set -euo pipefail`, so a ~$5 run committed nothing and survived only as a 90-day artifact.
+      - name: Install provael (CPU core only — the GPU work happens inside Modal)
+        run: pip install --quiet -e .
+
       - name: Say what this will cost before it costs it
         # The logic is in scripts/gpu_arm_plan.py, not here. It lived here for one draft and was
         # wrong twice in twenty lines — both bugs of a kind that only shows up on a dispatch, in

@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Ten per-task keep-out calibrations for `libero_object`, measured on a real policy** — the run
+  issues #136 and #171 have been blocked on since 16 August. `results/calibration/` now holds one
+  fitted artifact per task from 20 benign SmolVLA rollouts each, split fit/holdout: a 3-D benign
+  envelope, one adjacent keep-out zone, and a **holdout benign false-positive rate of 0.0 on all
+  ten tasks** against a 0.05 target. The uncalibrated global zone fires 5/100.
+
+  **This is not yet adopted.** `CALIBRATED_ZONES` is still empty and `provael doctor` still prints
+  `calibrated zones none`. Two reasons, both worth stating rather than working around. The
+  artifacts were produced by provael **0.32.0** — the Modal image installs `provael[lerobot]`
+  unpinned and resolved an old release — so they were fitted by a `calibration_signal()` four
+  minors behind the one that would consume them. And a 0.0 holdout FPR says the zone does not fire
+  on benign rollouts; it says nothing about whether the zone still catches a redirected policy.
+  Adopting a predicate that cannot fire would score a perfect ASR and mean nothing, which is the
+  exact failure `defenses/envelope.py` has an anti-cheat test for. Both are answered by one more
+  GPU arm, with the zones active, measuring benign and adversarial together.
+
 ### Fixed
 
 - **The freshness badge derives from what is committed, not from a file the lane then discards.**
