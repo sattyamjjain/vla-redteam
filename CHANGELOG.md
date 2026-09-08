@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.41.0] — 2026-09-08
+
 ### Changed
 
 - **`cli.py` is a package: 3,057 lines and 27 top-level commands split by subject** (issue #193).
@@ -39,6 +41,19 @@ All notable changes to this project are documented here. The format is based on
   Click object, which is how the rest of that file already worked.
 
 ### Fixed
+
+- **The `calibrate` GPU stage runs both arms, and is sized for it.** It passed no attack, because
+  `provael calibrate` took none — so the stage that exists to fit the keep-out predicate could only
+  produce the kind of fit this release establishes is uninformative. It now passes
+  `--attack roleplay`: the arm the headline rests on, so the face is chosen against the attack the
+  published number is about.
+
+  The timeout moved with it, because the timeout is the cost ceiling and a shard that overruns
+  writes no artifact at all — provael writes `report.json` once, at the end, so an overrun costs
+  that task entirely rather than costing it some episodes. The attacked arm reuses the holdout
+  seeds, so it is 30% more episodes and not double; at the pilot's measured 0.612 s/step that is
+  ~3,306 s of worst case against the old 3,600 s budget, which left nothing for a slow shard. Now
+  5,400 s, ceiling ~$12 rather than ~$8, and the plan step prints it before anything is billed.
 
 - **README told a reader the calibration was blocked on a run that has since happened.** It said
   "what is missing is a run rather than an idea" and named the benign-only `calibrate` arm at ~$5.
