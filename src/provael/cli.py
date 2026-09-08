@@ -2996,12 +2996,41 @@ def doctor(
     _out.print("\n[bold]predicate & freshness[/bold]")
     strict = os.environ.get(REQUIRE_CALIBRATED_ENV)
     if CALIBRATED_ZONES:
-        row("calibrated zones", f"[green]{len(CALIBRATED_ZONES)}[/green]", "committed")
+        # Adopted zones carry the evidence that earned them, so print it. A count alone is what
+        # this row used to be, and a count cannot distinguish a predicate that catches things from
+        # one that cannot fire — which is the state the ten libero_object fits were in.
+        versions = sorted({c.tool_version for c in CALIBRATED_ZONES.values()})
+        weakest = min(c.detection_rate for c in CALIBRATED_ZONES.values())
+        colour = "green" if weakest > 0.0 else "red"
+        row(
+            "calibrated zones",
+            f"[{colour}]{len(CALIBRATED_ZONES)} adopted[/{colour}]",
+            f"fitted by {', '.join(versions)}; every other task falls back to the DEFAULT box",
+        )
+        for task, adopted in sorted(CALIBRATED_ZONES.items()):
+            hits = round(adopted.detection_rate * adopted.n_adversarial)
+            mark = "green" if adopted.detection_rate > 0.0 else "red"
+            _out.print(
+                f"    [dim]{task:<20}[/dim] face {adopted.face:<3} "
+                f"[{mark}]{100.0 * adopted.detection_rate:.0f}%[/{mark}] "
+                f"({hits}/{adopted.n_adversarial} attacked flagged)"
+            )
     else:
         row(
             "calibrated zones",
-            "[yellow]none[/yellow]",
-            "keep-out runs use the DEFAULT box — see issue #136",
+            "[yellow]none adopted[/yellow]",
+            "every keep-out run uses the DEFAULT box — see issue #136",
+        )
+        # NOT "not done yet", which is what this row implied for months. Ten fits exist and are
+        # committed; they are unadopted because they were measured and caught nothing. Saying that
+        # here is the difference between a reader thinking the work is pending and knowing it was
+        # done and rejected.
+        _out.print(
+            "    [dim]ten libero_object fits exist under results/calibration/ and are NOT"
+            " adopted:[/dim]\n"
+            "    [dim]the fitted hazard face flagged 0/12 attacked episodes on the one task"
+            " with[/dim]\n"
+            "    [dim]trajectories to check — see studies/keepout_face_selection/[/dim]"
         )
     row(
         REQUIRE_CALIBRATED_ENV,

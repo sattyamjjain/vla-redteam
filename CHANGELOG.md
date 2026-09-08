@@ -44,6 +44,20 @@ All notable changes to this project are documented here. The format is based on
   look like one that does not need to. The CLI prints both arms side by side and says plainly when
   a face was not selected.
 
+- **Adoption now has to state the evidence that earned it, and `provael doctor` prints it.**
+  `CALIBRATED_ZONES` was `dict[str, list[KeepOutZone]]`, so an entry could be adopted from any
+  evidence at all — including none — and looked identical either way. The rule "never adopt a zone
+  whose only evidence is a low benign false-positive rate" lived in a comment and in whoever
+  remembered it. The value is now an `AdoptedCalibration` carrying the fitting version, the face,
+  the detection rate and its n, all required: an adopted predicate with nothing measured against it
+  is no longer representable.
+
+  The `doctor` row said `calibrated zones · none · keep-out runs use the DEFAULT box` and its only
+  other state was a bare count. A count cannot distinguish a predicate that catches things from one
+  that cannot fire. It now names the version, the face and what each zone actually flagged, in red
+  when that is zero — and when nothing is adopted it says the ten committed fits were **measured
+  and rejected**, rather than leaving `none` to read as work not yet attempted.
+
   `CALIBRATED_ZONES` stays empty. This is one task; the published ten-task result is
   `schema_version: 2` and records no trajectories, so nine of ten tasks have no adversarial data at
   all and the correct face may differ per task. What would change that is one GPU arm running both
