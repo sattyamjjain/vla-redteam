@@ -15,9 +15,12 @@ from rich.markup import escape
 from provael import __version__
 from provael.cli._shared import _out, app
 from provael.watch import (
+    STALE_AFTER_RELEASES,
     STALE_DAYS,
     age_days,
     latest_measurement,
+    published_measurement,
+    releases_behind,
 )
 
 
@@ -157,6 +160,31 @@ def doctor(
         f"[green]{strict}[/green]" if strict else "[yellow]unset[/yellow]",
         "set it to 1 to make an uncalibrated predicate a hard error",
     )
+
+    # The SECOND staleness window, and the one the age row below cannot see. www.provael.com has
+    # carried this on every page; the CLI had no way to say it, so a reader running `provael doctor`
+    # on a green badge had no signal that the published number was measured nine minors ago.
+    published = published_measurement()
+    if published is None:
+        row("published result", "[red]none[/red]", "no real-model measurement is committed")
+    else:
+        gap = releases_behind(published.tool_version, __version__)
+        if gap is None:
+            row(
+                "published result",
+                f"measured with [yellow]v{published.tool_version}[/yellow]",
+                f"release gap unknown — cannot compare against {__version__}",
+            )
+        else:
+            plural = "release" if gap == 1 else "releases"
+            stale = gap > STALE_AFTER_RELEASES
+            row(
+                "published result",
+                f"measured with [{'red' if stale else 'green'}]v{published.tool_version}"
+                f"[/{'red' if stale else 'green'}]",
+                f"{gap} {plural} behind {__version__}; window is {STALE_AFTER_RELEASES}"
+                + (" — PAST IT" if stale else ""),
+            )
 
     latest_run = latest_measurement(Path("watch"))
     age = age_days(latest_run)
