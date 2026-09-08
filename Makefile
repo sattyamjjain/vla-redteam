@@ -58,6 +58,12 @@ fix-doc-counts: ## Rewrite the generated inventory lines from the registries
 check-release: ## Fail if watch/release.json disagrees with provael.__version__
 	$(PY) scripts/gen_release_artifact.py --check
 
+check-cli-surface: ## Fail if `provael --help` differs from the committed snapshot
+	uv run python scripts/gen_cli_surface.py --check
+
+gen-cli-surface: ## Rewrite the CLI surface snapshot (adopter-visible: say so in the commit)
+	uv run python scripts/gen_cli_surface.py
+
 gen-release: ## Rewrite watch/release.json from provael.__version__
 	$(PY) scripts/gen_release_artifact.py
 

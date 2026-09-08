@@ -1,0 +1,1685 @@
+{
+ "$schema": "provael-cli-surface/1",
+ "commands": [
+  {
+   "help": "Print the Provael / provael version.",
+   "name": "version",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "Emit an Embodied AI Security Top 10 taxonomy crosswalk (deterministic).\n\n``--target robojailbench`` maps RoboJailBench's 18 harm categories to the EAI id(s) and provael\nattack family/families that cover them, with an honest coverage state per category. Sim-only;\nno RoboJailBench benchmark is run and no comparative scores are produced.\n\n``--target atlas`` maps all ten EAI risks to MITRE ATLAS tactic \u2192 technique phrasing, each with\nits coverage state. Proposed mapping, not endorsed by MITRE, and deliberately free of\n``AML.TXXXX`` ids.\n\n``--target foresight`` maps ForesightSafety-VLA's 13 diagnostic categories (arXiv:2606.27079),\nquoted verbatim, and states plainly where that benchmark's headline finding DISAGREES with\nprovael's one real measurement. With ``--in`` it also reports this run's cumulative cost, risk\nexposure time and unsafe success rate \u2014 in their vocabulary, in provael's units, with the\nincomparability warning attached.\n\n``--target vla_arena`` maps VLA-Arena's five safety suites (arXiv:2512.22539), identifiers\nverbatim, and carries the fact that their safety axis is **non-adversarial** as a\nmachine-readable field: their suites place a hazard in the scene, none perturbs the instruction,\nso the corresponding provael arm is the benign control rather than any attack family.\n\n``--target safevla`` maps SafeVLA-Bench (arXiv:2606.00773) structurally and records why no\nnumeric comparison is emitted \u2014 provael's ``succ_but_unsafe`` shares a name with their SBU and\nhas not been shown to share units, on an uncalibrated predicate.\n\nNeither ``vla_arena`` nor ``safevla`` accepts a measured comparison, so ``--in`` has no effect\non them. That is a property of the mapping, not a missing feature.",
+   "name": "crosswalk",
+   "params": [
+    {
+     "help": "Taxonomy to map the Top 10 against.",
+     "is_flag": false,
+     "name": "target",
+     "opts": [
+      "--target"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output format.",
+     "is_flag": false,
+     "name": "fmt",
+     "opts": [
+      "--format"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Run directory containing report.json. Only `--target foresight` reads it, to add this run's CC / RET / USR. Omit for the pure taxonomy mapping.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Where to write the crosswalk. An EXISTING DIRECTORY receives the target's canonical filename (e.g. crosswalk.foresight.json); any other path is written as a file. Omit for stdout.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "List registered policies, whether they can run here, and whether they have ever been run.",
+   "name": "list-policies",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "List registered suites, marking CPU fixtures apart from real simulators.",
+   "name": "list-suites",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "List registered attacks and attack families.",
+   "name": "list-attacks",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "List built-in run recipes (named RunConfig presets for `attack --recipe`).",
+   "name": "list-recipes",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "List published-attack reproductions (`reproduce <name>`).",
+   "name": "list-reproductions",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "List registered defenses (mitigations measured under the docs/defenses.md protocol).",
+   "name": "list-defenses",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "help": "Run a red-team evaluation and write report.json + report.md.",
+   "name": "attack",
+   "params": [
+    {
+     "help": "Registered policy name.",
+     "is_flag": false,
+     "name": "policy",
+     "opts": [
+      "--policy"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Registered suite name.",
+     "is_flag": false,
+     "name": "suite",
+     "opts": [
+      "--suite"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Comma-separated attack or family names.",
+     "is_flag": false,
+     "name": "attacks",
+     "opts": [
+      "--attacks"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Total episodes per (task, attack) pair.",
+     "is_flag": false,
+     "name": "episodes",
+     "opts": [
+      "--episodes"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Number of DISTINCT seeds. With --episodes-per-seed, total episodes = seeds x episodes-per-seed.",
+     "is_flag": false,
+     "name": "seeds",
+     "opts": [
+      "--seeds"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Repeats at the SAME seed. >1 separates policy stochasticity from initial-state variation; 1 (default) is the historical behaviour.",
+     "is_flag": false,
+     "name": "episodes_per_seed",
+     "opts": [
+      "--episodes-per-seed"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Base random seed.",
+     "is_flag": false,
+     "name": "seed",
+     "opts": [
+      "--seed"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Max timesteps per episode.",
+     "is_flag": false,
+     "name": "horizon",
+     "opts": [
+      "--horizon"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Comma-separated task subset (default: all).",
+     "is_flag": false,
+     "name": "tasks",
+     "opts": [
+      "--tasks"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Checkpoint override (e.g. a LIBERO-finetuned SmolVLA).",
+     "is_flag": false,
+     "name": "model",
+     "opts": [
+      "--model"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "JSON obs-key rename map for the policy.",
+     "is_flag": false,
+     "name": "rename_map",
+     "opts": [
+      "--rename-map"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Action-unnormalization stats id (e.g. OpenVLA).",
+     "is_flag": false,
+     "name": "unnorm_key",
+     "opts": [
+      "--unnorm-key"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Execution device: 'cpu' | 'cuda' | 'mps'. Recorded into the report (D6). 'tpu' is an explicit NotImplementedError slot (see ROADMAP \u00a78).",
+     "is_flag": false,
+     "name": "accelerator",
+     "opts": [
+      "--accelerator"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Compute-precision hint (e.g. 'fp32', 'bf16'), recorded.",
+     "is_flag": false,
+     "name": "precision",
+     "opts": [
+      "--precision"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Append-only trial ledger (JSONL). Episodes already in it are replayed instead of re-measured, so a preempted run continues rather than restarting. Creates the file if absent. Not usable with --episodes-per-seed > 1.",
+     "is_flag": false,
+     "name": "resume",
+     "opts": [
+      "--resume"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output directory for reports.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output format. 'sarif' also writes report.sarif, 'compliance' also writes report.compliance.json, into --out.",
+     "is_flag": false,
+     "name": "fmt",
+     "opts": [
+      "--format"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Write a SARIF 2.1.0 file to this path (implies SARIF).",
+     "is_flag": false,
+     "name": "sarif_out",
+     "opts": [
+      "--sarif-out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Dir of calibration artifacts (from `provael calibrate`).",
+     "is_flag": false,
+     "name": "calib",
+     "opts": [
+      "--calib"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Per-episode policy-query budget for the optimized (search) attack family.",
+     "is_flag": false,
+     "name": "query_budget",
+     "opts": [
+      "--query-budget"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Registered defense applied between the attack and the policy (see `provael list-defenses`). Writes a defense-log.jsonl audit sidecar.",
+     "is_flag": false,
+     "name": "defense",
+     "opts": [
+      "--defense"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Built-in recipe name (see `list-recipes`) or path to a recipe .yml. Explicitly-passed flags override the recipe.",
+     "is_flag": false,
+     "name": "recipe",
+     "opts": [
+      "--recipe"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Reproduce a published VLA attack by name, mapped onto Provael's attack families.\n\nPrints the paper's *cited* result separately from Provael's *measured* result. On the CPU\nstub the measured numbers are properties of the deterministic fixture, not a real VLA.",
+   "name": "reproduce",
+   "params": [
+    {
+     "help": "Reproduction name (see `list-reproductions`).",
+     "is_flag": false,
+     "name": "name",
+     "opts": [
+      "name"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Policy to run it against.",
+     "is_flag": false,
+     "name": "policy",
+     "opts": [
+      "--policy"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Suite to run it in.",
+     "is_flag": false,
+     "name": "suite",
+     "opts": [
+      "--suite"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Checkpoint override for a real policy.",
+     "is_flag": false,
+     "name": "model",
+     "opts": [
+      "--model"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Action-unnormalization id (e.g. OpenVLA).",
+     "is_flag": false,
+     "name": "unnorm_key",
+     "opts": [
+      "--unnorm-key"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Episodes per (task, attack) pair.",
+     "is_flag": false,
+     "name": "episodes",
+     "opts": [
+      "--episodes"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Base random seed.",
+     "is_flag": false,
+     "name": "seed",
+     "opts": [
+      "--seed"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output directory.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Print a summary of a previously written report, or emit it as SARIF / compliance evidence.",
+   "name": "report",
+   "params": [
+    {
+     "help": "Directory containing report.json.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output: 'table', 'sarif', 'compliance', 'scorecard', 'oscal', or 'mlbom'.",
+     "is_flag": false,
+     "name": "fmt",
+     "opts": [
+      "--format"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "ASR pass/fail threshold for --format scorecard.",
+     "is_flag": false,
+     "name": "threshold",
+     "opts": [
+      "--threshold"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "With --format sarif/compliance, write here instead of stdout. For compliance, a '.md' suffix writes the human-readable report, else JSON. With --baseline, writes the diff (a '.md' suffix writes Markdown, else JSON).",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "A known-good report.json to diff against (per-checkpoint regression gate). Exits non-zero if the candidate regressed.",
+     "is_flag": false,
+     "name": "baseline",
+     "opts": [
+      "--baseline"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "ASR rise allowed before a regression can trip (with --baseline).",
+     "is_flag": false,
+     "name": "regression_tolerance",
+     "opts": [
+      "--regression-tolerance"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "With --baseline, write a regression SARIF here.",
+     "is_flag": false,
+     "name": "sarif_out",
+     "opts": [
+      "--sarif-out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "With --baseline, write a signed regression attestation here \u2014 a tamper-evident, offline-verifiable envelope binding the diff + SARIF + summary under one Ed25519 signature (the artifact a safety case references).",
+     "is_flag": false,
+     "name": "attest_out",
+     "opts": [
+      "--attest-out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Ed25519 private-key PEM to sign the regression attestation with. Falls back to the PROVAEL_SIGNING_KEY env (PEM contents); omit both for an ephemeral key.",
+     "is_flag": false,
+     "name": "key",
+     "opts": [
+      "--key"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "With --attest-out, emit a digest-only bundle (no signature).",
+     "is_flag": true,
+     "name": "no_sign",
+     "opts": [
+      "--no-sign"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Print each family's transfer-test: rate + 95% Wilson CI + benign control + transfer-status.\n\nEvery family carries its honest ``transfer-status``: ``real-transfer`` for a real policy x\nsuite, ``stub-scaffolding`` on the deterministic CPU stub (reported as-is, no cross-model\nclaim).",
+   "name": "transfer-test",
+   "params": [
+    {
+     "help": "Directory containing report.json.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Write a byte-stable transfer-test JSON here, not a table.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Export a run into an evidence-graph format (AVID record) for a recognised database.\n\nSubmitting the record to AVID is an external action \u2014 this only produces the file.",
+   "name": "export",
+   "params": [
+    {
+     "help": "Directory containing report.json.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Evidence-graph format (currently 'avid').",
+     "is_flag": false,
+     "name": "fmt",
+     "opts": [
+      "--format"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Write here instead of stdout.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Emit a Machinery Regulation conformity-assessment evidence dossier (JSON + OSCAL + HTML).\n\nThe dossier is EVIDENCE INPUT to a conformity assessment \u2014 it is NOT a conformity assessment,\nand Provael is not a notified body. `--profile annex-i-part-a` (default) targets the Annex I\nPart A route for ML self-evolving-behaviour safety components; `--profile annex-iii` emits the\nAnnex III EHSR pack. The HTML is the human artifact: open it and print / save as PDF.",
+   "name": "certify",
+   "params": [
+    {
+     "help": "Directory with a prior report.json. Omit to run a stub.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Which Machinery conformity pack to emit.",
+     "is_flag": false,
+     "name": "profile",
+     "opts": [
+      "--profile"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Operator ComponentProfile JSON (identity / intended use / operating envelope).",
+     "is_flag": false,
+     "name": "component_metadata",
+     "opts": [
+      "--component-metadata"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Policy to run (when --in is omitted).",
+     "is_flag": false,
+     "name": "policy",
+     "opts": [
+      "--policy"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Suite to run (when --in is omitted).",
+     "is_flag": false,
+     "name": "suite",
+     "opts": [
+      "--suite"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Attacks to run when --in is omitted. Keep 'none' for the control.",
+     "is_flag": false,
+     "name": "attacks",
+     "opts": [
+      "--attacks"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Episodes per (task, attack) pair.",
+     "is_flag": false,
+     "name": "episodes",
+     "opts": [
+      "--episodes"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Base random seed.",
+     "is_flag": false,
+     "name": "seed",
+     "opts": [
+      "--seed"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Calibration dir (from `provael calibrate`).",
+     "is_flag": false,
+     "name": "calib",
+     "opts": [
+      "--calib"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Override the source commit stamp.",
+     "is_flag": false,
+     "name": "commit",
+     "opts": [
+      "--commit"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output directory for the dossier bundle.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Append the EAI \u2194 RoboJailBench taxonomy-crosswalk appendix (Annex I Part A).",
+     "is_flag": true,
+     "name": "include_crosswalk",
+     "opts": [
+      "--include-crosswalk"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "report.mitigation.json from `provael mitigation`, to state the protective measure and its measured effect. Omit and the dossier says so explicitly.",
+     "is_flag": false,
+     "name": "mitigation",
+     "opts": [
+      "--mitigation"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Run the EXPERIMENTAL reference hosted server (needs the `hosted` extra).\n\nNot a production signing service: it does not authenticate callers or bind ownership, and every\nsignature it produces is the operator's OWN key \u2014 untrusted until a verifier adds it to a trust\nstore. Disabled by default; set `PROVAEL_ENABLE_EXPERIMENTAL_HOSTED=1` to run it. The free CLI,\nattacks, ASR, SARIF, the Action and local `attest` are never gated.",
+   "name": "serve",
+   "params": [
+    {
+     "help": "Bind host.",
+     "is_flag": false,
+     "name": "host",
+     "opts": [
+      "--host"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Bind port.",
+     "is_flag": false,
+     "name": "port",
+     "opts": [
+      "--port"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Build the deterministic public evidence manifest a website can consume.\n\nRestates the honest metric semantics (adversarial ASR vs the all-episode rate vs the benign\ncontrol), per-attack results with Wilson intervals and applicability (N/A stays N/A), the\nevidence-ladder state, the release verdict, and the limitations. It pins its source commit and\ncarries no wall-clock, so the same report + commit yields byte-identical output.",
+   "name": "evidence-manifest",
+   "params": [
+    {
+     "help": "Directory with a report.json to describe.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in",
+      "--report"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Pinned source commit (required \u2014 never a moving branch).",
+     "is_flag": false,
+     "name": "commit",
+     "opts": [
+      "--commit"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Source repository URL.",
+     "is_flag": false,
+     "name": "repo",
+     "opts": [
+      "--repo"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output path for the manifest JSON.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Issue (or verify) a signed, dated, standards-crosswalked ASR evidence bundle.\n\n`attest` wraps the SAME compliance evidence as `report --format compliance` \u2014 the ASR with its\n95% Wilson CI, the benign-FPR control, the per-EAI breakdown, and the EU/ISO/NIST/IEC crosswalk\n\u2014 then binds it with a SHA-256 digest, stamps a UTC date + ruleset + commit, and signs a\nDSSE-style envelope (Ed25519). `--profile` embeds a standards-aligned assurance view\n(ISO 10218-2 -> IEC 62443 SL2, or an insurer summary) with the honest per-family transfer table\nand a third-party cert-readiness cross-reference. It is evidence, not certification.",
+   "name": "attest",
+   "params": [
+    {
+     "help": "Directory with a prior report.json (RunReport) to attest. Omit to run one.",
+     "is_flag": false,
+     "name": "in_dir",
+     "opts": [
+      "--in",
+      "--run"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Embed a standards-aligned assurance view: iso-10218-2 | iec-62443 | insurer.",
+     "is_flag": false,
+     "name": "profile",
+     "opts": [
+      "--profile"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Policy to run (when --in is omitted).",
+     "is_flag": false,
+     "name": "policy",
+     "opts": [
+      "--policy"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Suite to run (when --in is omitted).",
+     "is_flag": false,
+     "name": "suite",
+     "opts": [
+      "--suite"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Attacks to run when --in is omitted. Keep 'none' for the control.",
+     "is_flag": false,
+     "name": "attacks",
+     "opts": [
+      "--attacks"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Episodes per (task, attack) pair.",
+     "is_flag": false,
+     "name": "episodes",
+     "opts": [
+      "--episodes"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Base random seed.",
+     "is_flag": false,
+     "name": "seed",
+     "opts": [
+      "--seed"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Calibration dir (from `provael calibrate`).",
+     "is_flag": false,
+     "name": "calib",
+     "opts": [
+      "--calib"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Ed25519 private-key PEM to sign with. Omit for ephemeral.",
+     "is_flag": false,
+     "name": "key",
+     "opts": [
+      "--key"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Emit a digest-only bundle (no signature, no extra).",
+     "is_flag": true,
+     "name": "no_sign",
+     "opts": [
+      "--no-sign"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Verify an existing attestation.json instead of issuing.",
+     "is_flag": false,
+     "name": "verify",
+     "opts": [
+      "--verify"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Public-key PEM to verify a signed bundle with.",
+     "is_flag": false,
+     "name": "pubkey",
+     "opts": [
+      "--pubkey"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Local trust store (JSON) of trusted signer keys. Strict --verify needs it: a valid signature from an unknown key is authentic but UNTRUSTED.",
+     "is_flag": false,
+     "name": "trust_store",
+     "opts": [
+      "--trust-store"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "A report.json to independently recheck against the attested subject digest (--verify). Without it, the embedded digest is not independently confirmed.",
+     "is_flag": false,
+     "name": "subject_report",
+     "opts": [
+      "--report"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Grade only the digest layer (--verify): pass if the payload is intact, WITHOUT establishing signer identity or trust. Never reported as plain 'verified'.",
+     "is_flag": true,
+     "name": "integrity_only",
+     "opts": [
+      "--integrity-only"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Override the source commit stamp.",
+     "is_flag": false,
+     "name": "commit",
+     "opts": [
+      "--commit"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output directory for the bundle.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Calibrate the per-task unsafe predicate from benign (and optionally attacked) rollouts.",
+   "name": "calibrate",
+   "params": [
+    {
+     "help": "Registered policy name.",
+     "is_flag": false,
+     "name": "policy",
+     "opts": [
+      "--policy"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Registered suite name.",
+     "is_flag": false,
+     "name": "suite",
+     "opts": [
+      "--suite"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Comma-separated task subset (default: all).",
+     "is_flag": false,
+     "name": "tasks",
+     "opts": [
+      "--tasks"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Number of benign rollouts (split into fit/holdout).",
+     "is_flag": false,
+     "name": "seeds",
+     "opts": [
+      "--seeds"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Base seed; rollout i uses seed + i.",
+     "is_flag": false,
+     "name": "seed",
+     "opts": [
+      "--seed"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Max timesteps per benign rollout.",
+     "is_flag": false,
+     "name": "horizon",
+     "opts": [
+      "--horizon"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Max benign FPR on the holdout split.",
+     "is_flag": false,
+     "name": "target_fpr",
+     "opts": [
+      "--target-fpr"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Checkpoint override (real policies).",
+     "is_flag": false,
+     "name": "model",
+     "opts": [
+      "--model"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Attack for the ADVERSARIAL arm, run at the holdout seeds. Without it a spatial fit cannot choose which face of the benign envelope to guard, and the artifact says so \u2014 see `provael doctor`.",
+     "is_flag": false,
+     "name": "attack",
+     "opts": [
+      "--attack"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Output directory for calibration artifacts.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Per-task reachable-workspace bounds, from the BENIGN trajectories in a set of runs.\n\nThis is the INPUT to a keep-out calibration (#136) and deliberately not the calibration. A\ncalibrated zone needs a margin - how far outside the benign envelope the hazard region starts -\nand choosing one before looking at real benign spread is exactly how the current default box\ncame to overlap the workspace it was meant to sit outside. So this prints the observation and\nstops.\n\nThe episode count per task is part of the answer, not a footnote: bounds from two episodes and\nbounds from fifty are different objects, and a thin estimate is flagged rather than smoothed.",
+   "name": "workspace-bounds",
+   "params": [
+    {
+     "help": "Run dir(s), glob(s), or report.json path(s).",
+     "is_flag": false,
+     "name": "runs",
+     "opts": [
+      "--runs"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Emit JSON instead of the table.",
+     "is_flag": true,
+     "name": "as_json",
+     "opts": [
+      "--json"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Print the coverage counts, straight from the registries and the committed runs.\n\nOne place computes these so every other surface can render rather than retype \u2014 the README,\nthe docs, the Space and the website all restate them, and a restated number drifts.\n\nIt never prints a bare total. `families=16` alone reads as sixteen MEASURED families; the\n`real_policy` / `stub_only` pair is what stops that, and it travels in the same output so a\nconsumer cannot pick up only the flattering half. Note also that `attacks` and `families` are\ndifferent numbers: 39 adversarial attacks group into 17 adversarial families, and reading the\nregistry dict's length as a family count overstates coverage by 14.\n\nFrom a pip-installed wheel the evidence fields read `unscanned` rather than `0`. A wheel does\nnot package `results/`, so there is nothing to derive them from \u2014 and `real_policy=0` would\nread as \"no family has ever been measured\", contradicting a published claim rather than\nreporting a local fact. Registry counts are properties of the package, correct either way.",
+   "name": "coverage",
+   "params": [
+    {
+     "help": "Emit JSON instead of the one-line form.",
+     "is_flag": true,
+     "name": "as_json",
+     "opts": [
+      "--json"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Record a measurement and refresh the freshness badge (the continuous-assurance signal).\n\nTwo modes, and the second is the one that matters: `--record` appends a completed run to the\ntrial ledger and the run-level watch log; with no arguments it only RECOMPUTES the badge from\nwhat is already recorded. That second mode is why the badge can go red on its own \u2014 a cheap\nCPU cron refreshes the age even when no measurement happened, so measurements stopping is\nvisible instead of freezing the badge on its last green.",
+   "name": "watch",
+   "params": [
+    {
+     "help": "Record this run directory's report.json as a measurement (append to the ledger). Omit to only refresh the badge from what is already recorded.",
+     "is_flag": false,
+     "name": "run_dir",
+     "opts": [
+      "--record"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Where the ledger and badge live.",
+     "is_flag": false,
+     "name": "watch_dir",
+     "opts": [
+      "--dir"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Source commit to record with the measurement.",
+     "is_flag": false,
+     "name": "commit",
+     "opts": [
+      "--commit"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Open-loop attack measurement on RECORDED frames of a real robot dataset.\n\nAsks the policy what it WOULD do, twice, about the same real observation \u2014 once with the\noperator's instruction, once with the attacker's. Nothing executes and no robot moves.\n\nThis is not a real-robot attack success rate. It cannot become one: the study emits its own\nartifact type with no `asr` field, and earns the `real-forward` rung, which sits BELOW\n`real-episode` because an episode at least executes. See\ndocs/studies/offline-real-observation.md.",
+   "name": "offline-study",
+   "params": [
+    {
+     "help": "Validate the open-loop pipeline against the deterministic CPU stub, with no dataset download. The real path needs the [lerobot] extra and a GPU.",
+     "is_flag": true,
+     "name": "dry_run",
+     "opts": [
+      "--dry-run"
+     ],
+     "required": false,
+     "secondary_opts": [
+      "--no-dry-run"
+     ]
+    },
+    {
+     "help": "LeRobotDataset repo id. Validated before anything is read.",
+     "is_flag": false,
+     "name": "dataset",
+     "opts": [
+      "--dataset"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Frames to sample. Fix this in the pre-registration BEFORE looking at any data, not after.",
+     "is_flag": false,
+     "name": "frames",
+     "opts": [
+      "--frames"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "The operator's benign instruction.",
+     "is_flag": false,
+     "name": "instruction",
+     "opts": [
+      "--instruction"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Registered attack name, e.g. roleplay.",
+     "is_flag": false,
+     "name": "attack",
+     "opts": [
+      "--attack"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Policy checkpoint. Defaults to smolvla_base, whose 6-dim state matches an SO-101. The LIBERO-finetuned checkpoint behind the published simulation result expects an 8-dim state and CANNOT consume SO-101 observations.",
+     "is_flag": false,
+     "name": "model_id",
+     "opts": [
+      "--model"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "JSON mapping dataset observation keys to the checkpoint's, e.g. '{\"observation.images.ego\": \"observation.images.camera1\"}'. Required when the dataset's camera names differ from the checkpoint's, which is the normal case.",
+     "is_flag": false,
+     "name": "rename_map",
+     "opts": [
+      "--rename-map"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Torch device. CPU is the default and is enough: this study only does forward passes, it renders and steps nothing.",
+     "is_flag": false,
+     "name": "device",
+     "opts": [
+      "--device"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Directory to write offline-observation.json into.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Dry-run the pre-registered sim-to-real protocol, so the first physical session is\nnot also the first debugging session.\n\nWalks the SAME code path a physical run will take \u2014 runner, scoring, report, execution manifest,\nevidence manifest \u2014 against the deterministic CPU stub, and asserts the artifact shape a real\nrun must produce. The point is that when the arm arrives you are executing, not plumbing.\n\nIT PRODUCES NO HARDWARE RESULT, and it deliberately cannot: the artifacts land in a temp\ndirectory (or an explicit --out) and NEVER in results/hardware/, because `provael coverage`\ncounts that directory and provael.com renders its \"not yet measured\" claim from the count. A\ndry-run that incremented it would make the website assert a physical result that does not exist.\n\nThe protocol is pre-registered at docs/studies/sim-to-real-so101.md; that file is the source of\nrecord and this command mirrors its instruction-family arm.",
+   "name": "sim-to-real",
+   "params": [
+    {
+     "help": "Validate the whole protocol against the deterministic CPU stub. Required until hardware is attached \u2014 there is no non-dry path yet.",
+     "is_flag": true,
+     "name": "dry_run",
+     "opts": [
+      "--dry-run"
+     ],
+     "required": false,
+     "secondary_opts": [
+      "--no-dry-run"
+     ]
+    },
+    {
+     "help": "Where to write the dry-run artifacts (default: a temp dir).",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Validate, sign and submit a run to the public leaderboard \u2014 the whole path, one command.\n\nThree steps that were three documents: validate the report against the submission schema,\nEd25519-sign it so the numbers are tamper-evident in transit, and open the PR. The submission\nmachinery has existed since the board did and has never been exercised by an outsider, which\nis the kind of thing a five-step README causes.\n\nNothing here is privileged: it runs against a fork the same way it runs for the maintainer, and\nevery step prints the command it ran so a submitter can do it by hand instead. If `gh` is\nmissing or unauthenticated the command still validates and signs, then prints the exact\nremaining steps rather than failing at the end with the work thrown away.",
+   "name": "submit",
+   "params": [
+    {
+     "help": "A run directory containing report.json (from `provael attack --out`).",
+     "is_flag": false,
+     "name": "run_dir",
+     "opts": [
+      "run_dir"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Your GitHub handle or org \u2014 attributed on every row.",
+     "is_flag": false,
+     "name": "submitted_by",
+     "opts": [
+      "--submitted-by"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Ed25519 private-key PEM to sign with. Omit for ephemeral.",
+     "is_flag": false,
+     "name": "key",
+     "opts": [
+      "--key"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Submission directory name (default: --submitted-by).",
+     "is_flag": false,
+     "name": "name",
+     "opts": [
+      "--name"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Open the PR with `gh` (needs gh, authed).",
+     "is_flag": true,
+     "name": "open_pr",
+     "opts": [
+      "--open-pr"
+     ],
+     "required": false,
+     "secondary_opts": [
+      "--no-open-pr"
+     ]
+    },
+    {
+     "help": "Validate and sign and print the payload, touching no network and writing nothing. Works outside a clone.",
+     "is_flag": true,
+     "name": "dry_run",
+     "opts": [
+      "--dry-run"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Verify a checkpoint BEFORE loading it \u2014 a supply-chain control, not an ASR.\n\nFails closed: an unpinned digest and an un-opted-in pickle checkpoint both exit non-zero, so a\ngate that forgets to pin gets a failure rather than a silent pass. This produces a verdict, not\na rate; it does not reduce attack success (see `provael.integrity`).",
+   "name": "verify-checkpoint",
+   "params": [
+    {
+     "help": "Checkpoint identity (hub id or path) to record.",
+     "is_flag": false,
+     "name": "checkpoint",
+     "opts": [
+      "--checkpoint"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Local path to the fetched checkpoint to hash and classify.",
+     "is_flag": false,
+     "name": "path",
+     "opts": [
+      "--path"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Pinned SHA-256 the checkpoint must match. Required unless --no-require-digest is passed.",
+     "is_flag": false,
+     "name": "digest",
+     "opts": [
+      "--digest"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Explicitly opt in to loading pickle-format weights (code execution).",
+     "is_flag": true,
+     "name": "allow_pickle",
+     "opts": [
+      "--allow-pickle"
+     ],
+     "required": false,
+     "secondary_opts": [
+      "--no-allow-pickle"
+     ]
+    },
+    {
+     "help": "Fail when no digest is pinned. ON by default \u2014 fail closed.",
+     "is_flag": true,
+     "name": "require_digest",
+     "opts": [
+      "--require-digest"
+     ],
+     "required": false,
+     "secondary_opts": [
+      "--no-require-digest"
+     ]
+    },
+    {
+     "help": "Directory to write checkpoint-integrity.json into.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Measure a defense: pre/post ASR per family under the docs/defenses.md protocol.\n\nExits non-zero on `rejected-benign-cost` so it is usable as a CI gate \u2014 a defense that lowers\nASR by breaking the benign task must fail a pipeline, not be reported and ignored.",
+   "name": "mitigation",
+   "params": [
+    {
+     "help": "Run directory from `attack --defense <name>`.",
+     "is_flag": false,
+     "name": "defended",
+     "opts": [
+      "--defended"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Run directory from the SAME config, undefended.",
+     "is_flag": false,
+     "name": "baseline",
+     "opts": [
+      "--baseline"
+     ],
+     "required": true,
+     "secondary_opts": []
+    },
+    {
+     "help": "Directory to write the mitigation report into.",
+     "is_flag": false,
+     "name": "out",
+     "opts": [
+      "--out"
+     ],
+     "required": false,
+     "secondary_opts": []
+    },
+    {
+     "help": "Defense name for the report. Read from the defended run's execution manifest when omitted.",
+     "is_flag": false,
+     "name": "defense",
+     "opts": [
+      "--defense"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "help": "Diagnose this install in one screen: versions, backends, calibration, freshness.\n\nWHY THIS EXISTS. There were twenty-six top-level commands and not one of them answered \"why did\nthat not work on my machine\". The first-run transcript shows the cold path is twenty seconds, so\nthe install is not the problem \u2014 the SECOND run is, when someone reaches for `--policy smolvla`\nwithout the `[lerobot]` extra, or for the keep-out suite without a calibration, and gets an\nimport error or a silent default instead of a diagnosis.\n\nEverything here is read locally except the PyPI version, which `--offline` skips. Nothing is\ninferred: a backend is reported as importable only after actually importing it, and the\ncalibration and freshness rows read the same constants the runtime does.",
+   "name": "doctor",
+   "params": [
+    {
+     "help": "Skip the PyPI lookup; everything else is local anyway.",
+     "is_flag": true,
+     "name": "offline",
+     "opts": [
+      "--offline"
+     ],
+     "required": false,
+     "secondary_opts": []
+    }
+   ],
+   "short_help": null
+  },
+  {
+   "commands": [
+    {
+     "help": "Aggregate report.json files into a ranked leaderboard.json (deterministic; real + signed).",
+     "name": "build",
+     "params": [
+      {
+       "help": "Run dir(s), glob(s), or report.json path(s). Quote globs.",
+       "is_flag": false,
+       "name": "runs",
+       "opts": [
+        "--runs"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Build the public real board from this results dir (requires a non-stub run; stamps a UTC date, source commit, and an inputs digest).",
+       "is_flag": false,
+       "name": "real",
+       "opts": [
+        "--real"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Ed25519-sign the board (needs the `attest` extra).",
+       "is_flag": true,
+       "name": "sign",
+       "opts": [
+        "--sign"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Ed25519 private-key PEM to sign with. Omit for ephemeral.",
+       "is_flag": false,
+       "name": "key",
+       "opts": [
+        "--key"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Output directory for leaderboard.json.",
+       "is_flag": false,
+       "name": "out",
+       "opts": [
+        "--out"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Attribute every produced row to this submitter (a GitHub handle or org). Omit to leave rows unattributed.",
+       "is_flag": false,
+       "name": "submitted_by",
+       "opts": [
+        "--submitted-by"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "How these rows reached the board: maintainer-run | third-party-submission | unattributed.",
+       "is_flag": false,
+       "name": "provenance",
+       "opts": [
+        "--provenance"
+       ],
+       "required": false,
+       "secondary_opts": []
+      }
+     ],
+     "short_help": null
+    },
+    {
+     "help": "Verify a signed leaderboard offline against a public key.",
+     "name": "verify",
+     "params": [
+      {
+       "help": "Path to a leaderboard.json to verify.",
+       "is_flag": false,
+       "name": "board",
+       "opts": [
+        "--in"
+       ],
+       "required": true,
+       "secondary_opts": []
+      },
+      {
+       "help": "Ed25519 public-key PEM.",
+       "is_flag": false,
+       "name": "pubkey",
+       "opts": [
+        "--pubkey"
+       ],
+       "required": true,
+       "secondary_opts": []
+      }
+     ],
+     "short_help": null
+    }
+   ],
+   "help": "Aggregate run reports into a ranked ASR leaderboard.",
+   "name": "leaderboard",
+   "params": [],
+   "short_help": null
+  },
+  {
+   "commands": [
+    {
+     "help": "Cross-architecture transfer study: the instruction/visual/injection battery vs SmolVLA + pi0.\n\nRuns the deterministic CPU-stub battery (no GPU/network) and prints the per-(family x\narchitecture) ASR with a 95% Wilson CI and the benign-FPR control. SmolVLA and pi0 stay\n'pending' unless run on the gated real path (PROVAEL_INTEGRATION=1 + the `lerobot` / `openpi`\nextra). Reuses the shipped runner + scoring \u2014 no ASR is reimplemented.",
+     "name": "cross-arch",
+     "params": [
+      {
+       "help": "Episodes per attack (distinct seeds).",
+       "is_flag": false,
+       "name": "episodes",
+       "opts": [
+        "--episodes"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Base random seed.",
+       "is_flag": false,
+       "name": "seed",
+       "opts": [
+        "--seed"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Write summary.json + per-architecture RunReports here.",
+       "is_flag": false,
+       "name": "out",
+       "opts": [
+        "--out"
+       ],
+       "required": false,
+       "secondary_opts": []
+      }
+     ],
+     "short_help": null
+    },
+    {
+     "help": "EAI04 action-space transfer study: action/action_space vectors \u00d7 {reach, SmolVLA, pi0}.\n\nRuns the deterministic CPU ``reach`` keep-out reference (ASR + 95% Wilson CI + benign-FPR +\nSucc-But-Unsafe + BH-FDR + preliminary) and marks the real SmolVLA/pi0 LIBERO legs\nNOT-APPLICABLE: these out-of-band-directive attacks do not reach a real VLA, so no real-policy\nEAI04 transfer is obtainable through this mechanism. Reuses the runner + scoring \u2014 no ASR\nreimplemented, no second harness.",
+     "name": "eai04",
+     "params": [
+      {
+       "help": "Episodes per attack (distinct seeds).",
+       "is_flag": false,
+       "name": "episodes",
+       "opts": [
+        "--episodes"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Base random seed.",
+       "is_flag": false,
+       "name": "seed",
+       "opts": [
+        "--seed"
+       ],
+       "required": false,
+       "secondary_opts": []
+      },
+      {
+       "help": "Write summary.json + the reference RunReport here.",
+       "is_flag": false,
+       "name": "out",
+       "opts": [
+        "--out"
+       ],
+       "required": false,
+       "secondary_opts": []
+      }
+     ],
+     "short_help": null
+    }
+   ],
+   "help": "Reproducible red-team studies (sim-only; CPU-stub deterministic, real paths gated).",
+   "name": "study",
+   "params": [],
+   "short_help": null
+  }
+ ],
+ "help": "Provael \u2014 red-team open Vision-Language-Action (VLA) robot policies in simulation.",
+ "note": "GENERATED by scripts/gen_cli_surface.py. The CLI's public surface as data: command order, help text, parameter names and flags. Regenerate ONLY when the surface is meant to change, and say so in the commit \u2014 a diff here is an adopter-visible change to `provael --help`. Order is not sorted, because Typer prints commands in registration order and a split that re-registers them in a different order moves what a reader sees."
+}

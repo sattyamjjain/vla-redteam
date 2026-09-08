@@ -6,7 +6,46 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **`cli.py` is a package: 3,057 lines and 27 top-level commands split by subject** (issue #193).
+  Sixteen modules for the top-level commands plus two for the existing `leaderboard` and `study`
+  sub-apps; `cli/_shared.py` keeps the Typer apps, the two consoles and the cross-group helpers and
+  now registers no commands at all. The file that every contributor touched and every merge
+  conflict landed in is 517 lines, none of them a command body.
+
+  **`provael --help` is byte-identical, and that is checked rather than claimed.**
+  `tests/fixtures/cli-surface.json` snapshots the surface as data — command order, help text,
+  parameter names, flags, required-ness — and `tests/test_cli_surface.py` fails on any change. It
+  is data rather than rendered help because rendered help wraps to the terminal: a byte-comparison
+  of that fails on a different `COLUMNS` and passes on a lost option that happened to reflow. The
+  guard was mutation-tested first: a reordered command, a renamed option and a rewritten help
+  string are all caught; renaming a command's Python function is deliberately not, which is the
+  property that makes the move safe.
+
+  Two things about the new `cli/__init__.py` are load-bearing rather than housekeeping. Typer
+  renders top-level commands in registration order, and registration happens as each decorator
+  executes — so the import list IS the order of `provael --help`, and ruff's isort sorts it
+  alphabetically, which is not registration order. Hence `isort: off` around the block, with the
+  surface test as the actual defence. The groups were moved out front-to-back for the same reason:
+  each intermediate commit kept the order intact rather than parking moved commands at the end.
+
+  Startup does not regress: median `import provael.cli` is 210 ms against 245 ms before, measured
+  from a worktree at the pre-split commit rather than from a stashed tree — `git stash` leaves
+  untracked files behind, so the first comparison timed a tree where the commands had been moved
+  out and the import list had not caught up, and reported a 69% regression that did not exist.
+
+  One test reached `submit_cmd` as a module attribute; it now reads the command's help through the
+  Click object, which is how the rest of that file already worked.
+
 ### Fixed
+
+- **README told a reader the calibration was blocked on a run that has since happened.** It said
+  "what is missing is a run rather than an idea" and named the benign-only `calibrate` arm at ~$5.
+  That arm ran on 6 September. What it produced does not fix the predicate, and a benign-only run
+  never could have: the section now says so, with the 0/12 the fitted face flags against the 5 that
+  `x+` does and the 4 the uncalibrated default box does. The passage saying committed reports
+  predate `AttackResult.trajectory` now records that the gap is closed and was not the binding one.
 
 - **The keep-out calibration was placing its hazard zone beside the wrong face, and the benign
   metric could not have shown it.** All ten `libero_object` zones fitted on 6 September reported a

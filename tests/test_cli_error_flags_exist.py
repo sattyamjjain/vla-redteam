@@ -116,11 +116,17 @@ def test_help_text_only_names_flags_it_defines(command: str) -> None:
 
 
 def test_submit_does_not_advise_a_flag_it_lacks() -> None:
-    """The exact regression: `submit` must never point at `--no-sign`, which it does not define."""
-    from provael import cli
+    """The exact regression: `submit` must never point at `--no-sign`, which it does not define.
 
-    src = cli.submit_cmd.__doc__ or ""
-    assert "--no-sign" not in src
+    Reads the command's help through the Click object rather than `cli.submit_cmd.__doc__`. Same
+    string — Typer builds the help from the docstring — but reached the way the rest of this file
+    reaches everything else, and the way a user does. The attribute route also bound this test to
+    `submit_cmd` living at module scope on `provael.cli`, which stopped being true when #193 split
+    the CLI into a package.
+    """
+    help_text = getattr(_click_command("submit"), "help", "") or ""
+    assert help_text, "submit resolved to a command with no help text at all"
+    assert "--no-sign" not in help_text
     assert "--no-sign" not in _defined_flags("submit")
 
 
