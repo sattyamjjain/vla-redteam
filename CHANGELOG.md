@@ -10,6 +10,23 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- **`watch/release.json` publishes the release-drift window, so a consumer stops keeping a copy.**
+  `STALE_AFTER_RELEASES` landed in `watch.py` in this release while www.provael.com held its own
+  `= 2` in TypeScript. One policy constant in two repositories, and a disagreement between them is
+  invisible from both sides: the site would render one window and `provael doctor` another, with
+  nothing failing. It now ships as `staleAfterReleases`, and `test_release_artifact.py` fails if the
+  artifact and the constant disagree.
+
+- **E-2026-06 and E-2026-07 back-filled into `docs/errata.md`.** Both were raised on 6 September
+  against website surfaces and recorded only on the mirror at provael.com/errata, which left the
+  maintained source two entries short of the page that copies it. They agree entry-for-entry now.
+
+  One thing is recorded rather than fixed: **E-2026-07 and E-2026-05 are the same correction under
+  two IDs** — ISO 10218:2025 does not defer its cyber detail to IEC 62443, recorded once against two
+  repository documents and again five days later against four website pages. Issuing the second ID
+  was the mistake and it is not fixable: both are published and the page is append-only. E-2026-09
+  is the next free ID.
+
 - **Adopted calibrations load from a packaged directory, so a re-calibration is a file drop rather
   than a code change.** `CALIBRATED_ZONES` was a hand-written literal that stayed `{}` while ten
   fitted calibrations sat committed under `results/calibration/`. Nothing connected the two, so the

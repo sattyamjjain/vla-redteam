@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from provael import __version__  # noqa: E402  - after the sys.path insert above
+from provael.watch import STALE_AFTER_RELEASES  # noqa: E402
 
 OUT = ROOT / "watch" / "release.json"
 
@@ -49,6 +50,10 @@ NOTE = (
     "release number. It exists because a consumer that keeps its own copy goes stale the moment a "
     "release ships without someone remembering to re-pin it, which is how www.provael.com came to "
     "serve v0.39.3 on 14 pages while the tag, the GitHub release and PyPI all said 0.39.4. "
+    "`staleAfterReleases` is the project's own release-drift window, published so a consumer "
+    "reads the rule instead of keeping a copy: www.provael.com held its own copy in TypeScript "
+    "while watch.py held another, which is one policy constant in two repositories and exactly "
+    "the drift `watch/` exists to end. "
     "`tag` is the git tag the release workflow publishes from and `pypi` is the same string, "
     "because the workflow publishes from that tag. There is deliberately NO commit sha and NO "
     "published_at: this script runs offline and could only guess at them, and an unverifiable "
@@ -64,6 +69,10 @@ def build() -> dict[str, object]:
         "version": __version__,
         "tag": f"v{__version__}",
         "pypi": __version__,
+        # The release-drift window, from the constant the CLI reports against. A consumer that
+        # keeps its own copy of a threshold disagrees with the tool the moment either moves, and
+        # the disagreement is invisible from both sides.
+        "staleAfterReleases": STALE_AFTER_RELEASES,
     }
 
 

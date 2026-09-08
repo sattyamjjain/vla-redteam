@@ -69,3 +69,25 @@ def test_no_unverifiable_field_crept_in() -> None:
 def test_render_is_deterministic() -> None:
     gen = _generator()
     assert gen.render() == gen.render()
+
+
+def test_the_release_artifact_publishes_the_drift_window() -> None:
+    """The threshold must reach consumers as data, not as a number they retype.
+
+    www.provael.com held its own `STALE_AFTER_RELEASES = 2` in TypeScript while `watch.py` held
+    another. Two copies of one policy constant across two repositories, and a disagreement between
+    them would be invisible from both sides — the site would show one window, `provael doctor`
+    another, and nothing would fail. Publishing it here is what lets the site stop keeping a copy.
+    """
+    import json
+
+    from provael.watch import STALE_AFTER_RELEASES
+
+    published = json.loads((REPO / "watch" / "release.json").read_text(encoding="utf-8"))
+    assert published["staleAfterReleases"] == STALE_AFTER_RELEASES, (
+        "watch/release.json publishes a different drift window than watch.py enforces — run "
+        "`make gen-release` and commit the result"
+    )
+    assert isinstance(published["staleAfterReleases"], int), (
+        "the window must publish as a number a consumer can compare, not a string it must parse"
+    )

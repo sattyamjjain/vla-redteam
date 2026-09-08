@@ -58,9 +58,11 @@ STALE_DAYS = 7
 #: 2026: a $0.06 probe put the badge at "today" while the published 44/50 result was nine minors
 #: old, and only this window could say so.
 #:
-#: www.provael.com holds its own copy of this threshold in `src/lib/freshness.ts`. That is a
-#: duplicate policy constant across two repos and it can drift; the fix is for the site to read this
-#: one out of a published artifact, which is a cross-repo contract change and is not made here.
+#: PUBLISHED, so a consumer reads the rule instead of keeping a copy. `watch/release.json` carries
+#: it as `staleAfterReleases`, and `test_release_artifact.py` fails if the two disagree.
+#: www.provael.com held its own `STALE_AFTER_RELEASES = 2` in TypeScript for exactly as long as
+#: there was nothing to read — one policy constant in two repositories, where a disagreement is
+#: invisible from both sides because neither can see the other.
 STALE_AFTER_RELEASES = 2
 
 WATCH_LOG = "watch.jsonl"
