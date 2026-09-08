@@ -270,8 +270,11 @@ def test_doctor_says_the_unadopted_fits_were_rejected_not_pending(
 
     monkeypatch.setattr(kz, "CALIBRATED_ZONES", {})
     out = CliRunner().invoke(app, ["doctor", "--offline"]).output
-    assert "none adopted" in out
-    assert "0/12" in out, (
-        "the empty row must say the ten committed fits were measured and caught nothing, or a "
-        "reader takes 'none' to mean the calibration has not been attempted"
+    assert "0 adopted" in out
+    # The reason now comes from the loaded artifacts rather than a literal, so assert the SHAPE a
+    # reader depends on — a count of withheld fits and the tasks behind it — not the exact wording.
+    assert "withheld" in out, (
+        "the empty row must distinguish 'nothing fitted yet' from 'fitted, measured and rejected', "
+        "or a reader takes '0 adopted' to mean the calibration has not been attempted"
     )
+    assert "libero_object/0" in out, "withheld fits must be named, not just counted"
