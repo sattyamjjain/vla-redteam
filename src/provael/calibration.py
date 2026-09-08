@@ -460,8 +460,8 @@ def fit_spatial_zone(
     the boundary being well placed.
 
     It was not. Replaying the one committed real-model run that records trajectories
-    (`studies/keepout_face_selection/replay.py`, `libero_object/0`, 14 episodes across seven attack
-    families) against all six faces:
+    (`studies/keepout_face_selection/replay.py`, `libero_object/0`, 14 episodes — 2 benign and 12
+    attacked, six attacks in three families) against all six faces:
 
     ======  ============  ==============
     face    benign fires  attacked fires

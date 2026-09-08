@@ -13,7 +13,7 @@ All notable changes to this project are documented here. The format is based on
   held-out benign false-positive rate of exactly 0.0, and that was read here as the boundary being
   well placed. Replaying the one committed real-model run that records trajectories against all six
   candidate faces (`studies/keepout_face_selection/`, task `libero_object/0`, 14 episodes across
-  seven attack families) says otherwise:
+  six attacks across three families) says otherwise:
 
   | hazard face | benign fires | attacked fires |
   | --- | --- | --- |

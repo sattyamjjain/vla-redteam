@@ -19,8 +19,11 @@ The caveat was right, and understated. The zones do not catch anything.
 `schema_version >= 3` carry, and asks a question the fitting procedure never asked: which face of
 the benign envelope does a redirected policy actually leave through?
 
-Task `libero_object/0`, 14 episodes with trajectories, 2 benign and 12 attacked across seven
-attack families, from `results/gpu-scheduled/20260906T190346Z/`:
+Task `libero_object/0`, 14 episodes with trajectories, 2 benign and 12 attacked — six attacks
+(`roleplay`, `goal_substitution`, `paraphrase`, `patch`, `decoy_object`, `scene_text`) across three
+families (instruction, visual, injection), from `results/gpu-scheduled/20260906T190346Z/`. The
+run's seventh arm, `mcp_tool_desc`, has no surface in a direct LIBERO loop and recorded no
+trajectory, so it is not in the twelve.
 
 | hazard face | benign fires | attacked fires | which attacks |
 | --- | --- | --- | --- |
