@@ -9,6 +9,7 @@ import pytest
 from provael import __version__
 from provael.calibration import (
     Calibration,
+    DuplicateCalibrationError,
     ToolVersionMismatchError,
     artifact_name,
     calibrate_one,
@@ -217,3 +218,47 @@ def test_calibrate_suite_accepts_the_running_version() -> None:
         target_fpr=0.05, horizon=4, tool_version=__version__,
     )
     assert cals and all(c.tool_version == __version__ for c in cals.values())
+
+
+# ---------------------------------------------------------------------------------------------
+# Loading what the calibrate arm actually wrote.
+#
+# The loader globbed one level; the `calibrate` GPU arm shards one task per container and writes
+# each into its own subdirectory. So `--calib <the directory the arm produced>` matched zero files,
+# returned {}, and the run measured the DEFAULT keep-out box while being configured not to.
+# ---------------------------------------------------------------------------------------------
+
+
+def _spatial(task: str) -> Calibration:
+    return Calibration(
+        policy="smolvla", suite="libero", task=task, kind="spatial",
+        keep_out_zones=[KeepOutZone(name="z", x=(0.0, 1.0), y=(0.0, 1.0), z=(0.0, 1.0))],
+        target_fpr=0.05, benign_fpr=0.0, n_benign=20,
+    )
+
+
+def test_calibrations_are_found_in_the_sharded_layout_the_arm_writes(tmp_path: Path) -> None:
+    for i in range(3):
+        save_calibration(_spatial(f"libero_object/{i}"), tmp_path / f"libero_object_{i}")
+    found = load_calibrations(tmp_path, "smolvla", "libero")
+    assert sorted(found) == ["libero_object/0", "libero_object/1", "libero_object/2"], (
+        "the loader did not descend into the per-task subdirectories the calibrate arm writes, so "
+        "--calib pointed at that directory would silently fall back to the default predicate"
+    )
+
+
+def test_two_calibrations_for_one_task_are_refused_not_silently_picked(tmp_path: Path) -> None:
+    """Two fits are two boundaries; scoring against whichever sorted last is unreportable."""
+    save_calibration(_spatial("libero_object/0"), tmp_path / "first")
+    save_calibration(_spatial("libero_object/0"), tmp_path / "second")
+    with pytest.raises(DuplicateCalibrationError, match="libero_object/0"):
+        load_calibrations(tmp_path, "smolvla", "libero")
+
+
+def test_the_committed_calibrations_load_from_their_own_directory() -> None:
+    """The real artifacts, at the real path, since that is the invocation that was broken."""
+    committed = Path(__file__).resolve().parents[1] / "results/calibration/libero_object_calibrate"
+    if not committed.is_dir():  # pragma: no cover - present in the repo, absent in a wheel
+        pytest.skip("results/ is not packaged")
+    found = load_calibrations(committed, "smolvla", "libero")
+    assert len(found) == 10, f"expected all ten libero_object calibrations, found {sorted(found)}"

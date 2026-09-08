@@ -46,6 +46,20 @@ All notable changes to this project are documented here. The format is based on
   release-blocking failure. The deliberate consequence: a GPU measurement arm can only run against
   code that has actually shipped.
 
+- **`--calib` finds the calibrations the `calibrate` arm actually wrote.** `load_calibrations()`
+  globbed one directory level; the arm shards one task per container and writes each into its own
+  subdirectory. So the natural invocation — `--calib` pointed at the directory the arm produced —
+  matched zero files, returned an empty map, and the run proceeded against the DEFAULT keep-out
+  box while configured not to. Verified against the committed ten:
+  `results/calibration/libero_object_calibrate` yielded nothing, only its per-task subdirectories
+  did. The CLI's note on an empty map is what kept this a trap rather than a disaster.
+
+  The loader recurses now, and two files claiming the same `(policy, suite, task)` raise
+  `DuplicateCalibrationError` instead of the previous last-one-`sorted()`-wins. Two fits are two
+  boundaries, and every rate in the run is scored against whichever won, so there is no safe
+  default: newest-wins needs a timestamp the artifact does not carry, and tightest-wins is a
+  research decision rather than a loader's.
+
 - **`calibrate_suite()` refuses to stamp a version that did not produce the fit.** The function
   took `tool_version` as a parameter, so the label on a fitted predicate was whatever the caller
   passed. The CLI passed `__version__` and was correct; nothing enforced it. New

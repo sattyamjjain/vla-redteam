@@ -610,21 +610,55 @@ def save_calibration(cal: Calibration, out_dir: Path) -> Path:
     return path
 
 
-def load_calibrations(in_dir: Path, policy: str, suite: str) -> dict[str, Calibration]:
-    """Load every calibration in ``in_dir`` matching ``(policy, suite)``, keyed by task.
+class DuplicateCalibrationError(ValueError):
+    """Raised when a directory offers two calibrations for the same ``(policy, suite, task)``.
 
-    Unreadable or non-matching files are skipped, so a stray file never breaks a run.
+    The old loader took the last one `sorted()` happened to yield. Two fits of the same task are
+    two different boundaries, and every rate in the run is scored against whichever won — so a
+    silent pick means the report cannot say what it measured against. There is no safe default
+    here: newest-wins needs a timestamp the artifact does not carry, and tightest-wins is a
+    research decision, not a loader's. Say which files disagree and stop.
+    """
+
+
+def load_calibrations(in_dir: Path, policy: str, suite: str) -> dict[str, Calibration]:
+    """Load every calibration under ``in_dir`` matching ``(policy, suite)``, keyed by task.
+
+    RECURSIVE, AND IT HAD TO BECOME SO. This globbed one level, while the thing that writes these
+    artifacts shards one task per container and writes each into its own subdirectory. So the
+    natural invocation — `--calib` pointed at the directory the `calibrate` arm produced — matched
+    zero files, returned an empty map, and the run proceeded against the DEFAULT keep-out box.
+    Verified against the committed ten: `results/calibration/libero_object_calibrate` yielded `{}`,
+    and only `.../libero_object_0` yielded anything.
+
+    The CLI does print a note when the map comes back empty, which is the difference between this
+    being a trap and a disaster. It is still a trap: a run configured to measure a calibrated
+    predicate measures an uncalibrated one, prints an ASR, and the report's `calibrated` flag is
+    the only place the difference shows.
+
+    Unreadable or non-matching files are skipped, so a stray file never breaks a run. Two files
+    claiming the same task is a different matter — see :class:`DuplicateCalibrationError`.
     """
     found: dict[str, Calibration] = {}
+    origin: dict[str, Path] = {}
     if not in_dir.is_dir():
         return found
-    for path in sorted(in_dir.glob("*.json")):
+    for path in sorted(in_dir.rglob("*.json")):
         try:
             cal = Calibration.model_validate_json(path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
-        if cal.policy == policy and cal.suite == suite:
-            found[cal.task] = cal
+        if cal.policy != policy or cal.suite != suite:
+            continue
+        if cal.task in found:
+            raise DuplicateCalibrationError(
+                f"two calibrations for {policy}/{suite} task {cal.task!r} under {in_dir}: "
+                f"{origin[cal.task].relative_to(in_dir)} and {path.relative_to(in_dir)}. "
+                "They are different boundaries and the run would be scored against whichever "
+                "sorted last. Remove one."
+            )
+        found[cal.task] = cal
+        origin[cal.task] = path
     return found
 
 
@@ -650,4 +684,5 @@ __all__ = [
     "to_json",
     "save_calibration",
     "load_calibrations",
+    "DuplicateCalibrationError",
 ]
