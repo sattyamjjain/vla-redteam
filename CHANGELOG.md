@@ -40,6 +40,13 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- **README told a reader the calibration was blocked on a run that has since happened.** It said
+  "what is missing is a run rather than an idea" and named the benign-only `calibrate` arm at ~$5.
+  That arm ran on 6 September. What it produced does not fix the predicate, and a benign-only run
+  never could have: the section now says so, with the 0/12 the fitted face flags against the 5 that
+  `x+` does and the 4 the uncalibrated default box does. The passage saying committed reports
+  predate `AttackResult.trajectory` now records that the gap is closed and was not the binding one.
+
 - **The keep-out calibration was placing its hazard zone beside the wrong face, and the benign
   metric could not have shown it.** All ten `libero_object` zones fitted on 6 September reported a
   held-out benign false-positive rate of exactly 0.0, and that was read here as the boundary being

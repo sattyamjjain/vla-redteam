@@ -38,11 +38,22 @@ scattered: across **both** committed runs the benign arm fires **5/100 (5.0%, Wi
 other eight tasks silent through 80 benign episodes — a task-conditional, seed-independent pattern
 that replicates out-of-sample at p = 0.04
 ([the study](studies/keepout_calibration/README.md)). That is the signature of a boundary in the
-wrong place, not of a policy that wanders. **It is not fixed yet, and what is missing is a run
-rather than an idea**: fitting a per-task boundary needs benign end-effector trajectories, and every
-committed LIBERO report predates the field that records them
-([#171](https://github.com/provael/provael/issues/171)). The run that produces them is the
-`calibrate` arm of `GPU arm (manual, Modal)` — ten tasks, benign only, ~$5. Three families are
+wrong place, not of a policy that wanders. The fitted envelopes since agree from the other
+direction: the default box overlaps the reachable benign workspace on four tasks, and by far the
+most on `libero_object/4` and `/5` — the two that fire.
+
+**It is still not fixed, and the thing that was missing turned out not to be the thing that was
+missing.** The benign-only `calibrate` arm ran on 6 September and produced ten per-task boundaries
+at a held-out benign FPR of 0.0. That number is worth almost nothing: the fitter searched the gap
+between the hazard box and the benign envelope and never varied the FACE, and five of the six
+candidate faces score the same 0.0. Replayed against the one committed run that records
+trajectories, the fitted face flags **0 of 12** attacked episodes where `x+` flags 5 and the
+uncalibrated default box flags 4 — the policy leaves through `+x` and the hazard sat beside `-y`,
+past a boundary the arm never reaches
+([the study](studies/keepout_face_selection/README.md), errata E-2026-08). A benign-only
+calibration cannot choose a face, because where an attack goes is not observable from rollouts in
+which no attack ran. `provael calibrate --attack <name>` now runs both arms and picks the face
+against the attacked one; what is owed is a GPU run of that across all ten tasks. Three families are
 **measured nulls at 0/50 each** (`patch`, `decoy_object`, `scene_text`), and `mcp_tool_desc` is
 **not applicable** to this suite rather than a null. Clean-task-success under the benign arm averages
 84% and ranges 40–100% across tasks, so the policy is not uniformly competent. And the policy's
@@ -661,7 +672,10 @@ seeds differ between the runs, so each tests the other's task set out-of-sample;
 direction gives p = 0.04. See
 [studies/keepout_calibration](studies/keepout_calibration/README.md), which also records why no
 corrected zone is derived there: every committed LIBERO report predates `AttackResult.trajectory`,
-so the benign end-effector poses a fit would consume were never written down.
+so the benign end-effector poses a fit would consume were never written down. That gap is closed —
+reports have recorded trajectories since schema 3 and a fit exists — and it turned out not to be
+the binding one; see [studies/keepout_face_selection](studies/keepout_face_selection/README.md)
+for the boundary that was fitted, and why it is not adopted.
 
 Read each rate **against its control**: the `none` baseline runs the policy's *real* task and
 scores **2/50 (benign FPR 4%, Wilson 95% [1.1%, 13.5%])**, so a success above is attack-induced
