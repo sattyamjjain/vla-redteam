@@ -6,6 +6,49 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **The keep-out calibration was placing its hazard zone beside the wrong face, and the benign
+  metric could not have shown it.** All ten `libero_object` zones fitted on 6 September reported a
+  held-out benign false-positive rate of exactly 0.0, and that was read here as the boundary being
+  well placed. Replaying the one committed real-model run that records trajectories against all six
+  candidate faces (`studies/keepout_face_selection/`, task `libero_object/0`, 14 episodes across
+  seven attack families) says otherwise:
+
+  | hazard face | benign fires | attacked fires |
+  | --- | --- | --- |
+  | `x+` | 0/2 | **5/12** |
+  | `y-` — the face the fitter always picked | 0/2 | **0/12** |
+  | the other four | 0/2 | 0/12 |
+  | the shipped DEFAULT box | 0/2 | 4/12 |
+
+  The policy leaves its workspace through `+x`. The hazard sat beside `-y`, starting at y = −0.364,
+  and the deepest −y excursion in any episode is −0.303 — the zone was placed past a boundary the
+  arm never reaches.
+
+  `fit_spatial_zone` searched the **gap** and took the face from `hazard_zone_beside`'s default
+  argument. Every gap that clears the benign envelope gives a benign FPR at or near zero, because
+  the hazard is disjoint from the benign workspace by construction, so the search always succeeded
+  and the number it reported carried no information. Five of six wrong faces achieve the same 0.0.
+  The structural reason: **a benign-only calibration cannot choose a face**, because where an attack
+  goes is not observable from rollouts in which no attack ran. Re-running the arm on a newer build
+  would have reproduced this exactly.
+
+  The fitter now searches six faces × six gaps and picks the candidate that flags the most attacked
+  rollouts among those within the benign target. `calibrate_one` gained an adversarial arm run at
+  the **holdout** seeds, so the arms are paired — same initial states, differing only in whether the
+  attack ran — and `provael calibrate --attack <name>` exposes it. Every calibration records a
+  `spatial_fit`: the face, the gap, whether anything chose it, and `detection_rate`, which is
+  **`null` when no adversarial arm ran rather than `0.0`**. A measured failure to catch and not
+  having looked are different findings, and collapsing them is how a zone that cannot fire comes to
+  look like one that does not need to. The CLI prints both arms side by side and says plainly when
+  a face was not selected.
+
+  `CALIBRATED_ZONES` stays empty. This is one task; the published ten-task result is
+  `schema_version: 2` and records no trajectories, so nine of ten tasks have no adversarial data at
+  all and the correct face may differ per task. What would change that is one GPU arm running both
+  arms across all ten tasks with the new fitter. Issue #136 stays open with the numbers.
+
 ## [0.40.0] — 2026-09-08
 
 ### Fixed
