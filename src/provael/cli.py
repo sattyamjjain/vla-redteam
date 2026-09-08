@@ -1783,16 +1783,25 @@ def calibrate(
     model: Annotated[
         str | None, typer.Option(help="Checkpoint override (real policies).")
     ] = None,
+    attack: Annotated[
+        str | None,
+        typer.Option(
+            help="Attack for the ADVERSARIAL arm, run at the holdout seeds. Without it a spatial "
+            "fit cannot choose which face of the benign envelope to guard, and the artifact says "
+            "so — see `provael doctor`.",
+        ),
+    ] = None,
     out: Annotated[
         Path, typer.Option(help="Output directory for calibration artifacts.")
     ] = Path("calib"),
 ) -> None:
-    """Calibrate the per-task unsafe predicate from benign rollouts (writes calib artifacts)."""
+    """Calibrate the per-task unsafe predicate from benign (and optionally attacked) rollouts."""
     seed_list = list(range(seed, seed + seeds))
     try:
         calibrations = calibrate_suite(
             policy, suite, _split_csv(tasks), seed_list,
             target_fpr=target_fpr, horizon=horizon, tool_version=__version__, model=model,
+            attack_name=attack,
         )
     except (MissingLeRobotError, IncompatiblePolicyError) as exc:
         _fail(str(exc))
@@ -1810,22 +1819,58 @@ def calibrate(
     table.add_column("n benign", justify="right")
     table.add_column("target FPR", justify="right")
     table.add_column("benign FPR", justify="right", style="bold")
+    # BOTH ARMS, side by side, because a benign rate alone is exactly what made the ten
+    # libero_object zones unreadable: five of the six candidate faces give a 0.0 benign FPR, so
+    # that column on its own cannot tell a well-placed boundary from one nothing ever reaches.
+    table.add_column("detection", justify="right", style="bold")
+    table.add_column("face")
     table.add_column("boundary")
     written: list[Path] = []
+    unselected: list[str] = []
     for task, cal in calibrations.items():
         boundary = (
             f"danger > {cal.threshold:.3f}"
             if cal.kind == "scalar"
             else f"{len(cal.keep_out_zones)} keep-out zone(s)"
         )
+        fit = cal.spatial_fit
+        if fit is None or fit.detection_rate is None:
+            detection = "[yellow]not measured[/yellow]"
+        elif fit.detection_rate == 0.0:
+            detection = f"[red]0.0% (0/{fit.n_adversarial})[/red]"
+        else:
+            hits = round(fit.detection_rate * fit.n_adversarial)
+            detection = (
+                f"[green]{100.0 * fit.detection_rate:.1f}%[/green] "
+                f"({hits}/{fit.n_adversarial})"
+            )
+        if fit is None:
+            face = "[dim]n/a[/dim]"
+        elif fit.face_selected_from_data:
+            face = fit.face
+        else:
+            face = f"[yellow]{fit.face} (default)[/yellow]"
+            unselected.append(task)
         table.add_row(
             task, cal.kind, str(cal.n_benign),
-            f"{100.0 * cal.target_fpr:.1f}%", f"{100.0 * cal.benign_fpr:.1f}%", boundary,
+            f"{100.0 * cal.target_fpr:.1f}%", f"{100.0 * cal.benign_fpr:.1f}%",
+            detection, face, boundary,
         )
         written.append(save_calibration(cal, out))
     _out.print(table)
     for path in written:
         _out.print(f"Wrote [cyan]{path}[/cyan]")
+    if unselected:
+        # Said once, loudly, rather than left to be inferred from a column. This is the state all
+        # ten committed libero_object zones are in, and reading their 0.0 benign FPR as evidence
+        # the boundary was well placed is precisely the mistake it caused.
+        _err.print(
+            f"\n[yellow]note:[/yellow] {len(unselected)} calibration(s) kept the DEFAULT hazard "
+            "face because no adversarial arm ran. A benign-only fit sees every face as equally "
+            "clean — each one is outside the benign envelope by construction — so a low benign "
+            "FPR here is not evidence the boundary is well placed. Re-run with "
+            "[bold]--attack <name>[/bold] before adopting these."
+        )
     _out.print(
         f"\nApply it: [bold]provael attack --policy {policy} --suite {suite} "
         f"--calib {out}[/bold]"
@@ -2951,12 +2996,41 @@ def doctor(
     _out.print("\n[bold]predicate & freshness[/bold]")
     strict = os.environ.get(REQUIRE_CALIBRATED_ENV)
     if CALIBRATED_ZONES:
-        row("calibrated zones", f"[green]{len(CALIBRATED_ZONES)}[/green]", "committed")
+        # Adopted zones carry the evidence that earned them, so print it. A count alone is what
+        # this row used to be, and a count cannot distinguish a predicate that catches things from
+        # one that cannot fire — which is the state the ten libero_object fits were in.
+        versions = sorted({c.tool_version for c in CALIBRATED_ZONES.values()})
+        weakest = min(c.detection_rate for c in CALIBRATED_ZONES.values())
+        colour = "green" if weakest > 0.0 else "red"
+        row(
+            "calibrated zones",
+            f"[{colour}]{len(CALIBRATED_ZONES)} adopted[/{colour}]",
+            f"fitted by {', '.join(versions)}; every other task falls back to the DEFAULT box",
+        )
+        for task, adopted in sorted(CALIBRATED_ZONES.items()):
+            hits = round(adopted.detection_rate * adopted.n_adversarial)
+            mark = "green" if adopted.detection_rate > 0.0 else "red"
+            _out.print(
+                f"    [dim]{task:<20}[/dim] face {adopted.face:<3} "
+                f"[{mark}]{100.0 * adopted.detection_rate:.0f}%[/{mark}] "
+                f"({hits}/{adopted.n_adversarial} attacked flagged)"
+            )
     else:
         row(
             "calibrated zones",
-            "[yellow]none[/yellow]",
-            "keep-out runs use the DEFAULT box — see issue #136",
+            "[yellow]none adopted[/yellow]",
+            "every keep-out run uses the DEFAULT box — see issue #136",
+        )
+        # NOT "not done yet", which is what this row implied for months. Ten fits exist and are
+        # committed; they are unadopted because they were measured and caught nothing. Saying that
+        # here is the difference between a reader thinking the work is pending and knowing it was
+        # done and rejected.
+        _out.print(
+            "    [dim]ten libero_object fits exist under results/calibration/ and are NOT"
+            " adopted:[/dim]\n"
+            "    [dim]the fitted hazard face flagged 0/12 attacked episodes on the one task"
+            " with[/dim]\n"
+            "    [dim]trajectories to check — see studies/keepout_face_selection/[/dim]"
         )
     row(
         REQUIRE_CALIBRATED_ENV,

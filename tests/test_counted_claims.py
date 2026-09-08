@@ -386,6 +386,11 @@ _NAMED_SUBSETS: dict[tuple[str, str], str] = {
     ("docs/studies/eai04-action-space-transfer.md", "four EAI04 attacks"): (
         "the EAI04 subset, not the registry"
     ),
+    ("docs/errata.md", "six attacks"): (
+        "how many attacks recorded a trajectory in ONE run — the 6 September canary, whose "
+        "seventh arm (mcp_tool_desc) has no surface in a direct LIBERO loop and wrote none. A "
+        "fact about that run's usable episodes, not about the registry"
+    ),
 }
 
 #: Number words this project actually writes. Digits are matched separately.

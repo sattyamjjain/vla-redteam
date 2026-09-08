@@ -5,6 +5,13 @@ from this page once added — an erratum that disappears is worse than the error
 
 If you hold a Provael artifact, check here before relying on a regulatory date in it.
 
+**On the numbering.** IDs are one shared space across this document and the mirror at
+[provael.com/errata](https://www.provael.com/errata). E-2026-06 and E-2026-07 are recorded there
+and not here: both are corrections to website surfaces, raised on 6 September 2026. E-2026-07
+covers the same ISO 10218 / IEC 62443 claim this document records as E-2026-05, on four site pages
+rather than two repository documents. The gap is a mirroring drift, not a removed entry — nothing
+on this page is ever removed.
+
 ---
 
 ## E-2026-01 — Signed attestations carry a superseded EU AI Act application date
@@ -353,3 +360,71 @@ a sub-deadline to a secondary summary instead of the OJ text. This one is about 
 *relationship* taken from secondary description rather than from the standard's own Clause 2. The
 stronger version in circulation, "ISO 10218 requires IEC 62443 SL2", is wrong, and a claim an
 assessor can falsify by opening Clause 2 costs more than any count on this site.
+
+---
+
+## E-2026-08 — A calibration's 0.0 benign false-positive rate was published as evidence of a well-placed boundary
+
+**Status:** the figure is accurate · what it was offered as evidence for is corrected here · the
+predicate it describes was never adopted, so no measured result changes
+**Date raised:** 8 September 2026
+**Affects:** the `[0.40.0]` CHANGELOG entry and the commit message of PR #212, as published from
+6 September 2026. **No published rate moves.** The 44/50 roleplay headline, its task-clustered
+interval, and the 2/50 benign control are all unchanged, because these calibrations were never
+adopted — `CALIBRATED_ZONES` was empty then and is empty now.
+
+### What is wrong
+
+Ten per-task keep-out calibrations for `libero_object` were published on 6 September with the
+statement that all ten achieved **a held-out benign false-positive rate of 0.0** against a 0.05
+target. The number is correct. It was presented as the notable property of the fit, under a
+heading announcing the run that issues #136 and #171 had been blocked on.
+
+It is not a notable property. It is what nearly any placement of that hazard box achieves.
+
+`fit_spatial_zone` searched the **gap** between the benign envelope and the hazard box, and took
+the *face* from a default argument. A hazard box is disjoint from the benign workspace by
+construction, so every gap large enough to clear the envelope drives the benign rate to or near
+zero. Replaying the one committed real-model run that records trajectories against all six
+candidate faces — task `libero_object/0`, 14 episodes, six attacks across three families:
+
+| hazard face | benign fires | attacked fires |
+| --- | --- | --- |
+| `x+` | 0/2 | **5/12** |
+| `y-` — the face the fitter always used | 0/2 | **0/12** |
+| the other four | 0/2 | 0/12 |
+| the shipped default box | 0/2 | 4/12 |
+
+**Five of the six faces give the same 0.0 benign rate, and five of the six catch nothing.** A
+figure that five wrong answers also achieve cannot be evidence that the sixth is right.
+
+The published entry did carry a caveat — that a 0.0 benign rate "says nothing about whether the
+zone still catches a redirected policy" — and that caveat was correct. This erratum is that the
+caveat was the finding, and it was filed under a heading that read as an achievement.
+
+### What is correct
+
+| Claim | As published | Correct |
+| --- | --- | --- |
+| ten calibrations at 0.0 benign FPR | the notable property of the fit | the property of almost any placement; five of six candidate faces score the same |
+| detection by the fitted zone | not stated | **0 of 12** attacked episodes on the one task with data |
+| relative to the uncalibrated default box | implied improvement | strictly worse — the default box flags 4 of 12 |
+
+### What this does and does not affect
+
+**No published number moves.** These zones were never adopted. Every rate Provael has published for
+`libero_object` was measured against the documented default box, `provael doctor` has reported
+`calibrated zones none` throughout, and every run report and execution manifest records
+`calibrated: false`. www.provael.com describes the predicate as uncalibrated on every page that
+renders the result, and that description was and remains accurate.
+
+**Signatures are unaffected.** No attestation payload carries a calibration.
+
+### What a reader should do
+
+If you cited the ten calibrations as evidence that Provael's keep-out predicate is now fitted, it is
+not, and the tool has never claimed otherwise at runtime. If you were planning to adopt them, do
+not: `studies/keepout_face_selection/` has the replay, and `provael calibrate --attack <name>`
+(0.41.0 and later) is the path to a fit whose face is chosen against attacked rollouts rather than
+assumed. Issue #136 stays open with these numbers.
+

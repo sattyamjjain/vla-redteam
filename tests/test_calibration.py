@@ -77,8 +77,12 @@ def test_fit_scalar_threshold_degenerate_benign_is_clean() -> None:
 def test_fit_spatial_zone_keeps_benign_out() -> None:
     # Benign EE clustered in a small box; the hazard zone is placed disjoint from it.
     benign = [[[0.0, 0.0, 0.0], [0.01, 0.0, 0.0]] for _ in range(6)]
-    envelope, zones, fpr = fit_spatial_zone(benign[:4], benign[4:], target_fpr=0.05)
+    envelope, zones, fpr, detail = fit_spatial_zone(benign[:4], benign[4:], target_fpr=0.05)
     assert len(envelope) == 3 and len(zones) == 1
+    assert detail.face_selected_from_data is False, (
+        "a benign-only fit cannot choose a face and must not claim it did"
+    )
+    assert detail.detection_rate is None, "no adversarial arm ran; None is not 0.0"
     assert fpr <= 0.05
     # A benign point is NOT in the hazard zone; a point inside the zone IS.
     zone = zones[0]
@@ -262,3 +266,117 @@ def test_the_committed_calibrations_load_from_their_own_directory() -> None:
         pytest.skip("results/ is not packaged")
     found = load_calibrations(committed, "smolvla", "libero")
     assert len(found) == 10, f"expected all ten libero_object calibrations, found {sorted(found)}"
+
+
+# ---------------------------------------------------------------------------------------------
+# Choosing the hazard FACE, which is the defect the ten committed libero_object zones carry.
+#
+# fit_spatial_zone searched the gap and always used hazard_zone_beside's default face (y/low).
+# Every gap that clears the benign envelope gives a benign FPR near zero, so the search always
+# reported a well-behaved number — all ten zones came back at exactly 0.0 — while five of the six
+# faces catch nothing at all. Replaying the one committed run that records trajectories
+# (studies/keepout_face_selection/replay.py) found the redirected policy left through +x while the
+# hazard sat beside -y, past a boundary the arm never reached in any episode.
+#
+# So: a benign-only fit must not claim it chose, and an adversarial arm must actually move the
+# choice. Both directions get a test, because either alone can pass on a broken implementation.
+# ---------------------------------------------------------------------------------------------
+
+
+def _box(cx: float, cy: float, cz: float, n: int) -> list[list[list[float]]]:
+    """`n` one-step trajectories clustered at a point."""
+    return [[[cx, cy, cz]] for _ in range(n)]
+
+
+def test_an_adversarial_arm_moves_the_face_off_the_historical_default() -> None:
+    """Attacks that leave through +x must put the hazard on +x, not on the hardcoded y-."""
+    benign = _box(0.0, 0.0, 0.0, 8)
+    # Well past the +x face of the benign envelope, and nowhere near -y.
+    attacked = _box(0.25, 0.0, 0.0, 6)
+    _, zones, fpr, detail = fit_spatial_zone(
+        benign[:5], benign[5:], target_fpr=0.05, adversarial_trajectories=attacked
+    )
+    assert detail.face == "x+", f"chose {detail.face}, but the attacks all leave through +x"
+    assert detail.face_selected_from_data is True
+    assert fpr <= 0.05
+    assert detail.detection_rate == 1.0, "the chosen face must actually flag the attacked arm"
+    assert zones[0].contains([0.25, 0.0, 0.0])
+
+
+def test_a_zone_that_cannot_fire_reports_zero_rather_than_looking_clean() -> None:
+    """The committed-zones failure, in miniature: attacks that leave through no face at all.
+
+    Detection 0.0 with a 0.0 benign FPR is the exact signature of the ten `libero_object` zones.
+    The artifact has to be able to say that, or the two indistinguishable outcomes — well placed,
+    and placed where nothing goes — stay indistinguishable.
+    """
+    benign = _box(0.0, 0.0, 0.0, 8)
+    attacked = _box(0.001, 0.001, 0.001, 6)  # inside the benign envelope: no face separates them
+    _, _, fpr, detail = fit_spatial_zone(
+        benign[:5], benign[5:], target_fpr=0.05, adversarial_trajectories=attacked
+    )
+    assert fpr == 0.0
+    assert detail.detection_rate == 0.0, (
+        "an adversarial arm ran and nothing was caught, so the rate is a measured 0.0"
+    )
+    assert detail.face_selected_from_data is True, "a face WAS selected; it just catches nothing"
+
+
+def test_face_selection_is_deterministic_when_faces_tie() -> None:
+    """Ties fall to the tightest gap and then a fixed face order, never to dict iteration."""
+    benign = _box(0.0, 0.0, 0.0, 8)
+    attacked = _box(0.5, 0.5, 0.5, 6)  # far out on every axis: several faces flag it
+    first = fit_spatial_zone(
+        benign[:5], benign[5:], target_fpr=0.05, adversarial_trajectories=attacked
+    )[3]
+    for _ in range(5):
+        again = fit_spatial_zone(
+            benign[:5], benign[5:], target_fpr=0.05, adversarial_trajectories=attacked
+        )[3]
+        assert (again.face, again.gap) == (first.face, first.gap)
+
+
+def test_calibrate_one_runs_the_attacked_arm_at_the_holdout_seeds() -> None:
+    """Paired arms: the adversarial rollouts reuse the holdout seeds, not fresh ones.
+
+    An unpaired arm would confound "the attack redirects the policy" with "these seeds start
+    somewhere else", which is the comparison the whole fit rests on.
+    """
+    from provael.attacks.registry import make_attack
+
+    policy = _RecordingPolicy()
+    policy.load()
+    cal = calibrate_one(
+        policy, StubSuite(),
+        policy_name="stub", suite_name="stub", task="reach",
+        fit_seeds=[0, 1, 2], holdout_seeds=[3, 4],
+        target_fpr=0.05, horizon=4, tool_version=__version__,
+        attack=make_attack("roleplay"),
+    )
+    assert policy.seen == [0, 1, 2, 3, 4, 3, 4], (
+        "expected fit seeds, holdout seeds, then the SAME holdout seeds attacked; got "
+        f"{policy.seen}"
+    )
+    assert cal.policy_seeds == [0, 1, 2, 3, 4, 3, 4]
+
+
+def test_nothing_clearing_the_benign_target_is_reported_as_unselected() -> None:
+    """The fallback branch decides what a caller may adopt, so it gets its own test.
+
+    When no (face, gap) meets the benign target, the fit falls back to the historical face at the
+    widest gap. What matters is that it does NOT then claim to have selected: an adopted zone from
+    this branch would be a boundary nothing chose, dressed as one that was chosen.
+    """
+    benign = _box(0.0, 0.0, 0.0, 4)
+    _, zones, _, detail = fit_spatial_zone(
+        benign[:2], benign[2:], target_fpr=-1.0,  # unreachable: no rate is <= a negative target
+        adversarial_trajectories=_box(0.9, 0.0, 0.0, 3),
+    )
+    assert detail.face_selected_from_data is False
+    assert detail.face == "y-", "the fallback is the historical face, stated rather than arbitrary"
+    assert detail.gap == max(detail.gap, 0.5), "the widest gap, so the fallback is the safest one"
+    assert detail.detection_rate == 0.0, (
+        "an adversarial arm ran, so the rate is measured even on the fallback path — None here "
+        "would hide that this zone was checked and caught nothing"
+    )
+    assert len(zones) == 1

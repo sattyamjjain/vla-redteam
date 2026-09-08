@@ -13,6 +13,7 @@ import pytest
 from provael.suites import keepout_zones as kz
 from provael.suites.keepout_zones import (
     DEFAULT_KEEP_OUT_ZONE,
+    AdoptedCalibration,
     KeepOutZone,
     benign_envelope,
     hazard_zone_beside,
@@ -68,6 +69,27 @@ def test_hazard_zone_rejects_bad_axis_or_side() -> None:
         hazard_zone_beside(env, side="middle")
 
 
+
+def _adopted(zone: KeepOutZone) -> AdoptedCalibration:
+    """An adopted entry for tests. Every field is required by construction — see below."""
+    return AdoptedCalibration(
+        zones=[zone], tool_version="0.41.0", face="x+", detection_rate=0.5, n_adversarial=12
+    )
+
+
+def test_adoption_cannot_omit_the_evidence_that_earned_it() -> None:
+    """The rule "never adopt on a benign rate alone", moved out of a comment and into the type.
+
+    A bare `list[KeepOutZone]` could be adopted from any evidence at all, including none, and the
+    entry looked identical either way. All ten libero_object zones scored a 0.0 benign FPR and, on
+    the one task with trajectories to check, flagged 0 of 12 attacked episodes. Requiring the
+    detection rate at the point of adoption is what makes that case impossible to enter silently.
+    """
+    zone = KeepOutZone(name="z", x=(0.0, 1.0), y=(0.0, 1.0), z=(0.0, 1.0))
+    with pytest.raises(TypeError):
+        AdoptedCalibration(zones=[zone], tool_version="0.41.0", face="x+")  # type: ignore[call-arg]
+
+
 def test_zones_for_falls_back_to_default_when_uncalibrated() -> None:
     with pytest.warns(kz.UncalibratedZoneWarning):
         zones = zones_for("libero_object/999")  # not calibrated
@@ -76,7 +98,7 @@ def test_zones_for_falls_back_to_default_when_uncalibrated() -> None:
 
 def test_zones_for_returns_calibrated_entry(monkeypatch: pytest.MonkeyPatch) -> None:
     custom = KeepOutZone(name="calibrated:libero_object/0", x=(0.5, 0.6), y=(-0.9, -0.7), z=(0.0, 0.2))
-    monkeypatch.setitem(kz.CALIBRATED_ZONES, "libero_object/0", [custom])
+    monkeypatch.setitem(kz.CALIBRATED_ZONES, "libero_object/0", _adopted(custom))
     assert zones_for("libero_object/0") == [custom]
 
 
@@ -99,7 +121,7 @@ def _reset_warned_tasks() -> None:
 def test_calibrated_task_neither_warns_nor_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     """A calibrated task is the quiet path, in strict mode too — nothing to announce."""
     custom = KeepOutZone(name="calibrated:t", x=(0.5, 0.6), y=(-0.9, -0.7), z=(0.0, 0.2))
-    monkeypatch.setitem(kz.CALIBRATED_ZONES, "libero_object/7", [custom])
+    monkeypatch.setitem(kz.CALIBRATED_ZONES, "libero_object/7", _adopted(custom))
     assert kz.is_calibrated("libero_object/7") is True
     with warnings.catch_warnings():
         warnings.simplefilter("error", kz.UncalibratedZoneWarning)
@@ -208,3 +230,48 @@ def test_margin_reports_no_signal_rather_than_a_tie_at_zero() -> None:
     assert zone_margin(None, [zone]) == float("-inf")
     assert zone_margin([0.5, 0.5], [zone]) == float("-inf")  # short vector
     assert zone_margin([0.5, 0.5, 0.5], []) == float("-inf")
+
+
+def test_doctor_reports_the_evidence_behind_an_adopted_zone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`provael doctor` must show detection, not only a count.
+
+    The row said `none · keep-out runs use the DEFAULT box` for months, and its only other state
+    was a bare count. A count cannot tell a predicate that catches things from one that cannot
+    fire, which is exactly the state the ten libero_object fits are in — so both facts a reader
+    needs, the version and the detection rate, have to be on the line.
+    """
+    from typer.testing import CliRunner
+
+    from provael.cli import app
+
+    zone = KeepOutZone(name="calibrated", x=(0.0, 1.0), y=(0.0, 1.0), z=(0.0, 1.0))
+    monkeypatch.setitem(
+        kz.CALIBRATED_ZONES,
+        "libero_object/0",
+        AdoptedCalibration(zones=[zone], tool_version="9.9.9", face="x+",
+                           detection_rate=0.5, n_adversarial=12),
+    )
+    out = CliRunner().invoke(app, ["doctor", "--offline"]).output
+    assert "1 adopted" in out
+    assert "9.9.9" in out, "the row must name the version the calibration was fitted at"
+    assert "x+" in out, "the row must name the face"
+    assert "6/12" in out, "the row must show what the predicate actually caught"
+
+
+def test_doctor_says_the_unadopted_fits_were_rejected_not_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The empty row must not read as "not done yet" when the work was done and rejected."""
+    from typer.testing import CliRunner
+
+    from provael.cli import app
+
+    monkeypatch.setattr(kz, "CALIBRATED_ZONES", {})
+    out = CliRunner().invoke(app, ["doctor", "--offline"]).output
+    assert "none adopted" in out
+    assert "0/12" in out, (
+        "the empty row must say the ten committed fits were measured and caught nothing, or a "
+        "reader takes 'none' to mean the calibration has not been attempted"
+    )
