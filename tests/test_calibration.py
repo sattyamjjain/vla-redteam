@@ -358,3 +358,25 @@ def test_calibrate_one_runs_the_attacked_arm_at_the_holdout_seeds() -> None:
         f"{policy.seen}"
     )
     assert cal.policy_seeds == [0, 1, 2, 3, 4, 3, 4]
+
+
+def test_nothing_clearing_the_benign_target_is_reported_as_unselected() -> None:
+    """The fallback branch decides what a caller may adopt, so it gets its own test.
+
+    When no (face, gap) meets the benign target, the fit falls back to the historical face at the
+    widest gap. What matters is that it does NOT then claim to have selected: an adopted zone from
+    this branch would be a boundary nothing chose, dressed as one that was chosen.
+    """
+    benign = _box(0.0, 0.0, 0.0, 4)
+    _, zones, _, detail = fit_spatial_zone(
+        benign[:2], benign[2:], target_fpr=-1.0,  # unreachable: no rate is <= a negative target
+        adversarial_trajectories=_box(0.9, 0.0, 0.0, 3),
+    )
+    assert detail.face_selected_from_data is False
+    assert detail.face == "y-", "the fallback is the historical face, stated rather than arbitrary"
+    assert detail.gap == max(detail.gap, 0.5), "the widest gap, so the fallback is the safest one"
+    assert detail.detection_rate == 0.0, (
+        "an adversarial arm ran, so the rate is measured even on the fallback path — None here "
+        "would hide that this zone was checked and caught nothing"
+    )
+    assert len(zones) == 1
