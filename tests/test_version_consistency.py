@@ -56,7 +56,28 @@ _PIN_PATTERNS: dict[str, re.Pattern[str]] = {
 #: Files whose pins are historical by nature and must NOT be forced to the current release. The
 #: CHANGELOG's 0.3.0 entry describing the Action as it shipped in 0.3.0 is correct, not stale.
 #: They are still subject to the "must name a real tag" check — a dead ref is dead anywhere.
-_HISTORICAL = frozenset({"CHANGELOG.md"})
+#:
+#: The two additions beyond the CHANGELOG carry no pin at all. They carry PROSE ABOUT a pin: both
+#: record the 2-4 September 2026 incident in which README.md advertised an action ref that did not
+#: resolve, and both quote the offending string so a reader can see what a user actually copied.
+#: `_PIN_PATTERNS["action ref"]` is unanchored — it matches `provael/provael@vX.Y.Z` anywhere,
+#: including inside a comment — so the 0.40.0 bump flagged both as stale and would have had the
+#: sweep rewrite an incident record into one that describes a version released after the incident
+#: it narrates. A guard that forces a historical account to be false is worse than no guard.
+#:
+#: THE EXEMPTION IS BY FILE, WHICH IS BLUNTER THAN IT LOOKS, so `test_exempt_files_carry_no_live_pin`
+#: below holds the other end: an exempt file may discuss a pin but may not USE one. That keeps this
+#: set from quietly covering a real `uses:` line that goes stale later.
+_HISTORICAL = frozenset(
+    {
+        "CHANGELOG.md",
+        ".github/workflows/readme-quickstart.yml",
+        "tests/test_version_consistency.py",
+    }
+)
+
+#: A live pin — the syntax a copy-paste actually resolves — as opposed to a mention of one.
+_LIVE_ACTION_REF = re.compile(r"^\s*-?\s*uses:\s*provael/provael@v\d+\.\d+\.\d+", re.MULTILINE)
 
 #: Surfaces that must never *lose* their pin. The scan below catches a pin that is wrong; it cannot
 #: catch one that was deleted, because a file with no pin trivially satisfies every other check.
@@ -185,6 +206,33 @@ def test_adopter_facing_pins_name_the_current_release() -> None:
     )
     assert not stale, (
         f"this tree is {__version__}, but these pins are stale:\n  " + "\n  ".join(stale)
+    )
+
+
+def test_exempt_files_carry_no_live_pin() -> None:
+    """An exempt file may DISCUSS a pin; it may not use one.
+
+    `_HISTORICAL` exempts whole files, so a real `uses: provael/provael@vX.Y.Z` added to one of
+    them later would inherit the exemption and go stale in silence — the exact failure the rest of
+    this module exists to prevent, reintroduced through the escape hatch. This is the other end of
+    that trade: the exemption stays cheap to reason about because the files it covers are checked
+    for never actually pinning anything.
+
+    CHANGELOG.md is excluded from the check rather than exempted from the module: its entries quote
+    workflow snippets verbatim, `uses:` line and all, and that is what a changelog is for.
+    """
+    offenders: list[str] = []
+    for name in sorted(_HISTORICAL - {"CHANGELOG.md"}):
+        path = REPO / name
+        if not path.is_file():
+            continue
+        for match in _LIVE_ACTION_REF.finditer(path.read_text(encoding="utf-8")):
+            line = path.read_text(encoding="utf-8").count("\n", 0, match.start()) + 1
+            offenders.append(f"{name}:{line} {match.group(0).strip()}")
+    assert not offenders, (
+        "these files are exempt from the staleness sweep because they only DISCUSS pins, but they "
+        "now carry a live one:\n  " + "\n  ".join(offenders)
+        + "\n\nEither remove the pin or remove the file from _HISTORICAL — it cannot have both."
     )
 
 

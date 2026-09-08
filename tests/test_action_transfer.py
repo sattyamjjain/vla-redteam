@@ -18,6 +18,7 @@ adversarial-image search (FreezeVLA), which is out of this CPU core.
 
 from __future__ import annotations
 
+from provael import __version__
 from provael.attacks.action import (
     DEFAULT_HIJACK_TARGET,
     FreezeAttack,
@@ -185,7 +186,7 @@ def test_action_rate_holds_under_calibrated_danger_predicate() -> None:
     # The action axis is independent of danger calibration: calibrating the danger
     # predicate must not suppress freeze/redirect detection, and the benign control holds.
     cals = calibrate_suite(
-        "stub", "stub", None, list(range(20)), target_fpr=0.05, horizon=8, tool_version="test"
+        "stub", "stub", None, list(range(20)), target_fpr=0.05, horizon=8, tool_version=__version__
     )
     report = run(
         RunConfig(policy="stub", suite="stub", attacks=["none", "action"], episodes=10, seed=0),

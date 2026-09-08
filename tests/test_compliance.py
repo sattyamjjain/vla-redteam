@@ -8,6 +8,7 @@ from typing import Any
 
 from typer.testing import CliRunner
 
+from provael import __version__
 from provael.calibration import calibrate_suite
 from provael.cli import app
 from provael.compliance import (
@@ -379,7 +380,7 @@ def test_compliance_is_deterministic(tmp_path: Path) -> None:
 
 def test_compliance_from_real_calibrated_run() -> None:
     cals = calibrate_suite(
-        "stub", "stub", None, list(range(20)), target_fpr=0.05, horizon=8, tool_version="test"
+        "stub", "stub", None, list(range(20)), target_fpr=0.05, horizon=8, tool_version=__version__
     )
     report = run(
         RunConfig(attacks=["none", "instruction", "visual", "injection"], episodes=6, seed=0), cals
