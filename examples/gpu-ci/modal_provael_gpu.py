@@ -60,6 +60,24 @@ OUT_DIR = "runs/smolvla_libero"
 #: this repo is held: copied deliberately, then guarded against drifting.
 OUT_DIR_FILE = "gpu-scheduled-outdir.txt"
 
+#: The exact provael release this canary installs. `tests/test_gpu_image_pin.py` asserts it equals
+#: `provael.__version__`, so a release bump that forgets this line fails CI.
+#:
+#: THIS LANE WAS GENUINELY UNPINNED, which is a different bug from its sibling and has a different
+#: consequence. `modal_libero_suite.py` pinned a commit and let it go stale; this file installed
+#: `provael[lerobot]` with no constraint at all, so the canary measured whatever PyPI served on the
+#: morning it ran. That is not reproducible in either direction: the same image definition builds
+#: different code next week, and a report from last month cannot be re-run against what produced
+#: it. It also silently split the two lanes — on 6 September 2026 the canary resolved 0.39.1 while
+#: the measurement arm was fitting zones on 0.32.0, so the two GPU lanes were measuring builds five
+#: releases apart while both looked healthy.
+#:
+#: A canary's job is to be recent, which is an argument for tracking the newest release, not for
+#: tracking it implicitly. Pinning and asserting against `__version__` gives the same currency and
+#: says which build produced the number.
+PROVAEL_PIN = "0.40.0"
+PROVAEL = f"provael[lerobot]=={PROVAEL_PIN}"
+
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
@@ -71,7 +89,7 @@ image = (
         "libegl1-mesa-dev", "libgl1-mesa-glx", "libosmesa6-dev", "git", "cmake",
         "build-essential", "libglib2.0-0", "libsm6", "libxrender1", "libfontconfig1",
     )
-    .pip_install("provael[lerobot]", "lerobot[libero]==0.5.1")
+    .pip_install(PROVAEL, "lerobot[libero]==0.5.1")
     .env({"MUJOCO_GL": "egl", "PYOPENGL_PLATFORM": "egl", "PROVAEL_INTEGRATION": "1"})
 )
 app = modal.App("provael-gpu-ci", image=image)

@@ -223,6 +223,22 @@ def split_seeds_three(seeds: list[int]) -> tuple[list[int], list[int], list[int]
     return seeds[:cut_cal], seeds[cut_cal : n - n_eval], seeds[n - n_eval :]
 
 
+class ToolVersionMismatchError(ValueError):
+    """Raised when a calibration would be stamped with a version that did not produce it.
+
+    WHY THIS IS NOT PARANOIA. ``calibrate_suite`` takes ``tool_version`` as a parameter, so the
+    label on a fitted predicate is whatever the caller says it is. The CLI passes
+    ``provael.__version__`` and is correct; nothing enforced that, and nothing had to be wrong for
+    the field to become misleading — it can also go wrong by staying right while the code around it
+    moves, which is the shape of the GPU image pin (`tests/test_gpu_image_pin.py`).
+
+    A wrong version on a calibration is worse than a wrong version on a run. A run's report can be
+    re-taken and compared; a fitted boundary is the thing every later run is scored *against*, so
+    a mislabelled one silently misattributes every measurement downstream of it. Fail at the entry
+    point, before any GPU time is spent, rather than discovering it in a committed artifact.
+    """
+
+
 class SeedLeakageError(ValueError):
     """Raised when a calibration's eval seeds overlap its fit/calibration seeds (data leakage)."""
 
@@ -332,6 +348,18 @@ class Calibration(BaseModel):
     n_benign: int
     fit_seeds: list[int] = Field(default_factory=list)
     holdout_seeds: list[int] = Field(default_factory=list)
+    #: What :meth:`PolicyAdapter.seed` ACTUALLY applied per rollout, fit seeds then holdout seeds,
+    #: in that order. A list of integers is the claim that a re-run at these seeds reproduces this
+    #: envelope, to the extent the hardware allows — so the APPLIED value is recorded, never the
+    #: requested one (see :meth:`PolicyAdapter.seed`), or every calibration would assert a
+    #: determinism no adapter delivered.
+    #:
+    #: Two ways it is empty of that claim, and they mean different things. ``None`` in a slot: the
+    #: adapter was offered the seed and does not seed its own sampler, so the rollout was one draw.
+    #: An empty list: the artifact predates this field, which is every calibration fitted before
+    #: 0.40.0 — including the ten `libero_object` zones of 6 September 2026, whose rollouts were
+    #: never offered a seed at all. Both are unreproducible; only the first was measured to be.
+    policy_seeds: list[int | None] = Field(default_factory=list)
     tool_version: str = ""
     accelerator: str | None = Field(
         None, description="D6: device this predicate was fit on ('cpu' | 'cuda' | 'mps'), or None."
@@ -410,11 +438,32 @@ def collect_benign_signals(
     task: str,
     seeds: Sequence[int],
     horizon: int,
-) -> list[list[Signal]]:
-    """Run benign (attack=none) rollouts; return each episode's calibration-signal sequence."""
+) -> tuple[list[list[Signal]], list[int | None]]:
+    """Run benign (attack=none) rollouts; return each episode's signals AND the seed applied.
+
+    SEEDS THE POLICY, NOT ONLY THE ENVIRONMENT. This loop called ``suite.reset(task, seed)`` and
+    nothing else, so a flow-matching sampler like SmolVLA's drew its noise from whatever state the
+    ambient torch RNG happened to be in. :meth:`PolicyAdapter.seed` exists for exactly this and was
+    called from one place in the codebase — :func:`provael.runner.run_episode`, the attack path.
+    The calibration path never called it.
+
+    WHY THAT MATTERED MORE HERE THAN ANYWHERE ELSE. A fitted predicate is not a measurement you can
+    re-take; it is a boundary that every later measurement is scored against. The ten
+    `libero_object` zones committed on 6 September 2026 were fitted from unseeded rollouts, so the
+    trajectories that produced those envelopes cannot be reproduced by anyone, including us — the
+    artifact records the seeds it *asked* the environment for and there is no way to recover the
+    sampler draws that actually shaped the boundary. Re-running on a newer build without fixing
+    this would have bought a fresh version label and the same irreproducibility.
+
+    RETURNS WHAT WAS APPLIED, NOT WHAT WAS ASKED, matching the runner and
+    :meth:`PolicyAdapter.seed`: an adapter that cannot seed returns ``None`` and the calibration
+    records ``null``. Claiming a seed no adapter applied is the failure this mirrors away from.
+    """
     episodes: list[list[Signal]] = []
+    policy_seeds: list[int | None] = []
     for seed in seeds:
         policy.reset()
+        policy_seeds.append(policy.seed(seed))
         obs = suite.reset(task, seed)
         instruction = str(obs.get("instruction", ""))
         signals: list[Signal] = []
@@ -427,7 +476,7 @@ def collect_benign_signals(
             if done:
                 break
         episodes.append(signals)
-    return episodes
+    return episodes, policy_seeds
 
 
 def _scalar_scores(episodes: list[list[Signal]]) -> list[float]:
@@ -458,9 +507,12 @@ def calibrate_one(
     tool_version: str,
 ) -> Calibration:
     """Fit a :class:`Calibration` for one task from its benign fit/holdout rollouts."""
-    fit_eps = collect_benign_signals(policy, suite, task, fit_seeds, horizon)
-    holdout_eps = collect_benign_signals(policy, suite, task, holdout_seeds, horizon)
+    fit_eps, fit_applied = collect_benign_signals(policy, suite, task, fit_seeds, horizon)
+    holdout_eps, holdout_applied = collect_benign_signals(
+        policy, suite, task, holdout_seeds, horizon
+    )
     n_benign = len(fit_seeds) + len(holdout_seeds)
+    policy_seeds = fit_applied + holdout_applied
 
     if suite.calibration_kind == "spatial":
         envelope, zones, benign_fpr = fit_spatial_zone(
@@ -470,7 +522,8 @@ def calibrate_one(
             policy=policy_name, suite=suite_name, task=task, kind="spatial",
             envelope=envelope, keep_out_zones=zones,
             target_fpr=target_fpr, benign_fpr=benign_fpr, n_benign=n_benign,
-            fit_seeds=fit_seeds, holdout_seeds=holdout_seeds, tool_version=tool_version,
+            fit_seeds=fit_seeds, holdout_seeds=holdout_seeds, policy_seeds=policy_seeds,
+            tool_version=tool_version,
         )
 
     threshold, benign_fpr = fit_scalar_threshold(
@@ -480,7 +533,8 @@ def calibrate_one(
         policy=policy_name, suite=suite_name, task=task, kind="scalar",
         signal_key="danger", threshold=threshold,
         target_fpr=target_fpr, benign_fpr=benign_fpr, n_benign=n_benign,
-        fit_seeds=fit_seeds, holdout_seeds=holdout_seeds, tool_version=tool_version,
+        fit_seeds=fit_seeds, holdout_seeds=holdout_seeds, policy_seeds=policy_seeds,
+        tool_version=tool_version,
     )
 
 
@@ -500,9 +554,21 @@ def calibrate_suite(
     Builds the policy/suite via the registries (so the gated LIBERO/SmolVLA errors surface
     exactly as in ``attack``), splits the seeds into fit/holdout, and returns a
     ``task -> Calibration`` map.
+
+    Raises :class:`ToolVersionMismatchError` when ``tool_version`` is not the version of the
+    provael that is about to do the fitting. See that class for why a wrong label here is worse
+    than a wrong label almost anywhere else in the tool.
     """
+    from provael import __version__
     from provael.policies.registry import make_policy
     from provael.suites import make_suite
+
+    if tool_version != __version__:
+        raise ToolVersionMismatchError(
+            f"asked to stamp calibration artifacts with tool_version {tool_version!r}, but the "
+            f"provael doing the fitting is {__version__!r}. The artifact would name a build that "
+            "did not produce it."
+        )
 
     policy = make_policy(policy_name, model=model)
     suite = make_suite(suite_name)
@@ -544,21 +610,55 @@ def save_calibration(cal: Calibration, out_dir: Path) -> Path:
     return path
 
 
-def load_calibrations(in_dir: Path, policy: str, suite: str) -> dict[str, Calibration]:
-    """Load every calibration in ``in_dir`` matching ``(policy, suite)``, keyed by task.
+class DuplicateCalibrationError(ValueError):
+    """Raised when a directory offers two calibrations for the same ``(policy, suite, task)``.
 
-    Unreadable or non-matching files are skipped, so a stray file never breaks a run.
+    The old loader took the last one `sorted()` happened to yield. Two fits of the same task are
+    two different boundaries, and every rate in the run is scored against whichever won — so a
+    silent pick means the report cannot say what it measured against. There is no safe default
+    here: newest-wins needs a timestamp the artifact does not carry, and tightest-wins is a
+    research decision, not a loader's. Say which files disagree and stop.
+    """
+
+
+def load_calibrations(in_dir: Path, policy: str, suite: str) -> dict[str, Calibration]:
+    """Load every calibration under ``in_dir`` matching ``(policy, suite)``, keyed by task.
+
+    RECURSIVE, AND IT HAD TO BECOME SO. This globbed one level, while the thing that writes these
+    artifacts shards one task per container and writes each into its own subdirectory. So the
+    natural invocation — `--calib` pointed at the directory the `calibrate` arm produced — matched
+    zero files, returned an empty map, and the run proceeded against the DEFAULT keep-out box.
+    Verified against the committed ten: `results/calibration/libero_object_calibrate` yielded `{}`,
+    and only `.../libero_object_0` yielded anything.
+
+    The CLI does print a note when the map comes back empty, which is the difference between this
+    being a trap and a disaster. It is still a trap: a run configured to measure a calibrated
+    predicate measures an uncalibrated one, prints an ASR, and the report's `calibrated` flag is
+    the only place the difference shows.
+
+    Unreadable or non-matching files are skipped, so a stray file never breaks a run. Two files
+    claiming the same task is a different matter — see :class:`DuplicateCalibrationError`.
     """
     found: dict[str, Calibration] = {}
+    origin: dict[str, Path] = {}
     if not in_dir.is_dir():
         return found
-    for path in sorted(in_dir.glob("*.json")):
+    for path in sorted(in_dir.rglob("*.json")):
         try:
             cal = Calibration.model_validate_json(path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             continue
-        if cal.policy == policy and cal.suite == suite:
-            found[cal.task] = cal
+        if cal.policy != policy or cal.suite != suite:
+            continue
+        if cal.task in found:
+            raise DuplicateCalibrationError(
+                f"two calibrations for {policy}/{suite} task {cal.task!r} under {in_dir}: "
+                f"{origin[cal.task].relative_to(in_dir)} and {path.relative_to(in_dir)}. "
+                "They are different boundaries and the run would be scored against whichever "
+                "sorted last. Remove one."
+            )
+        found[cal.task] = cal
+        origin[cal.task] = path
     return found
 
 
@@ -571,6 +671,7 @@ __all__ = [
     "split_seeds_three",
     "seed_set_digest",
     "SeedLeakageError",
+    "ToolVersionMismatchError",
     "CalibrationBinding",
     "build_calibration_binding",
     "Calibration",
@@ -583,4 +684,5 @@ __all__ = [
     "to_json",
     "save_calibration",
     "load_calibrations",
+    "DuplicateCalibrationError",
 ]

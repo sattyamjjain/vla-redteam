@@ -6,6 +6,73 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.40.0] — 2026-09-08
+
+### Fixed
+
+- **Calibration rollouts seed the policy, not only the environment.** `PolicyAdapter.seed()` was
+  called from exactly one place in the codebase — `runner.run_episode`, the attack path.
+  `collect_benign_signals()` seeded the environment with `suite.reset(task, seed)` and left the
+  policy alone, so a flow-matching sampler like SmolVLA's drew its noise from whatever state the
+  ambient torch RNG was in.
+
+  That is a worse defect in a calibration than in a run. A run can be re-taken and compared; a
+  fitted boundary is the thing every later run is scored *against*. All ten `libero_object` keep-out
+  zones were fitted this way on 6 September 2026, which means the trajectories that shaped them are
+  not reproducible — the artifacts record the seeds asked of the environment, and nothing recovers
+  the sampler draws that actually set the envelope. Re-running on a newer build without fixing this
+  would have bought a fresh version label and the same irreproducibility.
+
+  `Calibration` now carries `policy_seeds`: what the adapter **applied**, per rollout, fit seeds
+  then holdout seeds. Not what the caller asked for — same discipline as the runner's `policy_seed`
+  and `resolved_device`. An adapter that does not seed records `null`, which is the honest
+  description of every calibration fitted before this release, and a test fails on a mutation that
+  records the requested seed instead.
+
+- **Both Modal GPU images pin an exact provael release, and CI fails when the pin goes stale.**
+  The two lanes were wrong in opposite directions and both reported success.
+  `examples/gpu-ci/modal_libero_suite.py` pinned commit `5d34472` (v0.32.0, 9 August) under a
+  comment saying to bump it deliberately when a stage needed newer code; five releases passed and
+  the ~$5 `calibrate` arm fitted every zone on that build. `examples/gpu-ci/modal_provael_gpu.py`
+  pinned nothing at all, so the scheduled canary installed whatever PyPI served that morning and
+  resolved 0.39.1. The two GPU lanes were measuring builds five releases apart.
+
+  Neither was visible from outside. A stale pin and a current pin are the same string shape, the
+  runs succeeded, and the artifacts recorded `tool_version: 0.32.0` truthfully. Pinning was never
+  the hard part; noticing was. `tests/test_gpu_image_pin.py` now asserts every `modal_*.py` lane
+  declares `PROVAEL_PIN`, that it is an exact version rather than a range or a URL, that it equals
+  `provael.__version__`, and — the mutation guard — that provael reaches `pip_install` only through
+  that constant and does reach it. Bumping `__init__.py` without bumping the lanes is now a
+  release-blocking failure. The deliberate consequence: a GPU measurement arm can only run against
+  code that has actually shipped.
+
+- **`--calib` finds the calibrations the `calibrate` arm actually wrote.** `load_calibrations()`
+  globbed one directory level; the arm shards one task per container and writes each into its own
+  subdirectory. So the natural invocation — `--calib` pointed at the directory the arm produced —
+  matched zero files, returned an empty map, and the run proceeded against the DEFAULT keep-out
+  box while configured not to. Verified against the committed ten:
+  `results/calibration/libero_object_calibrate` yielded nothing, only its per-task subdirectories
+  did. The CLI's note on an empty map is what kept this a trap rather than a disaster.
+
+  The loader recurses now, and two files claiming the same `(policy, suite, task)` raise
+  `DuplicateCalibrationError` instead of the previous last-one-`sorted()`-wins. Two fits are two
+  boundaries, and every rate in the run is scored against whichever won, so there is no safe
+  default: newest-wins needs a timestamp the artifact does not carry, and tightest-wins is a
+  research decision rather than a loader's.
+
+- **`calibrate_suite()` refuses to stamp a version that did not produce the fit.** The function
+  took `tool_version` as a parameter, so the label on a fitted predicate was whatever the caller
+  passed. The CLI passed `__version__` and was correct; nothing enforced it. New
+  `ToolVersionMismatchError`, raised at the entry point before any GPU time is spent.
+
+- **The staleness sweep no longer forces an incident record to become false.** The `action ref` pin
+  pattern is unanchored, so it matched two comments *about* a pin — both narrating the 2-4 September
+  2026 incident where README.md advertised an action ref that would not resolve. The 0.40.0 bump
+  flagged them as stale pins, and rewriting them would have dated the incident to a release that
+  postdates it. Both files are exempt now, and because the exemption is by file,
+  `test_exempt_files_carry_no_live_pin` holds the other end: an exempt file may discuss a pin and
+  may not use one.
+
 ### Added
 
 - **Ten per-task keep-out calibrations for `libero_object`, measured on a real policy** — the run
@@ -15,14 +82,25 @@ All notable changes to this project are documented here. The format is based on
   ten tasks** against a 0.05 target. The uncalibrated global zone fires 5/100.
 
   **This is not yet adopted.** `CALIBRATED_ZONES` is still empty and `provael doctor` still prints
-  `calibrated zones none`. Two reasons, both worth stating rather than working around. The
-  artifacts were produced by provael **0.32.0** — the Modal image installs `provael[lerobot]`
-  unpinned and resolved an old release — so they were fitted by a `calibration_signal()` four
-  minors behind the one that would consume them. And a 0.0 holdout FPR says the zone does not fire
-  on benign rollouts; it says nothing about whether the zone still catches a redirected policy.
-  Adopting a predicate that cannot fire would score a perfect ASR and mean nothing, which is the
-  exact failure `defenses/envelope.py` has an anti-cheat test for. Both are answered by one more
-  GPU arm, with the zones active, measuring benign and adversarial together.
+  `calibrated zones none`. Two reasons, both worth stating rather than working around.
+
+  The artifacts were produced by provael **0.32.0**, and the reason matters more than the version
+  gap does. This entry first said the Modal image installed `provael[lerobot]` unpinned and that
+  the zones were therefore fitted against a `calibration_signal()` four minors behind the one that
+  would consume them. **Both halves of that were wrong, and are corrected here.** The measurement
+  lane pinned a *commit* and had gone stale at it; the unpinned lane was the scheduled canary, a
+  different file. And `calibration_signal()` is byte-identical between 0.32.0 and this release —
+  the signal definition never moved, so a version gap alone would have been a weak argument for
+  spending again. The real defect is that `collect_benign_signals()` never called
+  `PolicyAdapter.seed()`, so SmolVLA's flow-matching sampler ran off ambient torch state and the
+  trajectories that shaped all ten envelopes cannot be reproduced by anyone, including us. That is
+  fixed below, and it is what makes a re-fit worth paying for.
+
+  The second reason is unchanged: a 0.0 holdout FPR says the zone does not fire on benign
+  rollouts; it says nothing about whether the zone still catches a redirected policy. Adopting a
+  predicate that cannot fire would score a perfect ASR and mean nothing, which is the exact failure
+  `defenses/envelope.py` has an anti-cheat test for. That is answered by one more GPU arm, with the
+  zones active, measuring benign and adversarial together.
 
 ### Fixed
 

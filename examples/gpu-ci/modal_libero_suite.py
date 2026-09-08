@@ -131,22 +131,34 @@ ALL_TASKS = ",".join(f"libero_object/{i}" for i in range(10))
 #: McNemar comparison is made against, and without it an ASR has nothing to be read against.
 ATTACKS = "none,instruction,visual,injection"
 
-#: provael installs from git, not PyPI. `--episodes-per-seed` landed after the 0.32.0 tag, so the
-#: released wheel cannot express stage 2's design at all.
+#: The exact provael release every container installs. `tests/test_gpu_image_pin.py` asserts this
+#: equals `provael.__version__`, so a release bump that forgets this line fails CI.
 #:
-#: PINNED TO A COMMIT, NOT `@main`, FOR TWO SEPARATE REASONS — and the second one cost a run.
+#: PINNING IS NOT THE HARD PART — NOTICING A STALE PIN IS. This line already pinned, to a commit,
+#: with a comment saying to "bump this deliberately when a stage needs newer code". It stayed at
+#: `5d34472` (v0.32.0, 9 August 2026) through five releases, and on 6 September 2026 the ~$5
+#: `calibrate` arm fitted all ten `libero_object` keep-out zones on that build. Nothing was
+#: broken and nothing warned: a stale pin and a current pin are the same string shape, the run
+#: succeeded, and the artifacts recorded `tool_version: 0.32.0` truthfully. The defect was only
+#: visible by reading the SHA and resolving it by hand. "Bump it deliberately" is a thing a person
+#: has to remember, and this project treats anything kept current by memory as already stale.
 #:
-#: 1. REPRODUCIBILITY. A report says which provael version produced it, but `@main` means the same
-#:    version string covers every commit since the tag. Pinning makes the run's input exact.
-#: 2. MODAL CACHES THE IMAGE BY THE LAYER DEFINITION, so `@main` is a string that never changes
-#:    while the code behind it does. The `control` stage's first launch failed with
-#:    `unknown attack or family 'control'` against a merged, tested, pushed registry: the image
-#:    was rebuilt from a cached layer that had resolved `@main` weeks earlier. The failure was
-#:    loud, but the same staleness on a code path that still RUNS would be silent, and would have
-#:    produced numbers attributed to the wrong commit.
+#: WHY A PyPI VERSION RATHER THAN A COMMIT. The original comment gave a reason that has expired:
+#: `--episodes-per-seed` landed after the 0.32.0 tag, so the released wheel could not express
+#: stage 2's design. It has been released for months. A version is now the better pin on its own
+#: merits — it is immutable (PyPI forbids re-upload), it is what a reader can `pip install` to
+#: reproduce the measurement, and it can be checked against `__version__` by a test, which a SHA
+#: cannot without a network call. The consequence is deliberate: a measurement arm can only run
+#: against code that has actually shipped.
 #:
-#: Bump this deliberately when a stage needs newer code — the bump is what rebuilds the image.
-PROVAEL = "git+https://github.com/provael/provael@5d34472a484ebdcdd5bbc57fb734dd754d22cf2a"
+#: MODAL CACHES THE IMAGE BY THE LAYER DEFINITION, which is the other reason `@main` was already
+#: wrong. `@main` is a string that never changes while the code behind it does; the `control`
+#: stage's first launch failed with `unknown attack or family 'control'` against a merged, tested,
+#: pushed registry, because the image was rebuilt from a layer that had resolved `@main` weeks
+#: earlier. That failure was loud. The same staleness on a code path that still RUNS is silent,
+#: and is exactly what happened to `calibrate`.
+PROVAEL_PIN = "0.40.0"
+PROVAEL = f"provael[lerobot]=={PROVAEL_PIN}"
 
 STAGES: dict[str, dict[str, str]] = {
     # ONE episode. Its only job is to measure seconds-per-episode so the other two stages can be
@@ -388,7 +400,7 @@ image = (
         "libegl1-mesa-dev", "libgl1-mesa-glx", "libosmesa6-dev", "git", "cmake", "build-essential",
         "libglib2.0-0", "libsm6", "libxrender1", "libfontconfig1",
     )
-    .pip_install(f"provael[lerobot] @ {PROVAEL}", "lerobot[libero]==0.5.1")
+    .pip_install(PROVAEL, "lerobot[libero]==0.5.1")
     # Silences robosuite's three-line "No private macro file found! / It is recommended to use a
     # private macro file / To setup, run: ..." banner on every import, by doing what it asks.
     # `|| true` because a missing script must not fail the build over a cosmetic warning.

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from provael import __version__
 from provael.calibration import calibrate_suite, to_json
 from provael.cli import app
 from provael.config import RunConfig
@@ -18,7 +19,7 @@ SEEDS = list(range(20))
 
 def _stub_calibration() -> dict:
     return calibrate_suite(
-        "stub", "stub", None, SEEDS, target_fpr=0.05, horizon=8, tool_version="test"
+        "stub", "stub", None, SEEDS, target_fpr=0.05, horizon=8, tool_version=__version__
     )
 
 
