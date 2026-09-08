@@ -398,7 +398,7 @@ Or in CI, gating the build on the measured rate — SARIF goes to code scanning,
 the adversarial ASR exceeds your threshold or regresses past tolerance against a baseline:
 
 ```yaml
-- uses: provael/provael@v0.41.0
+- uses: provael/provael@v0.41.1
   with: { policy: stub, suite: stub, asr-threshold: "0.5" }
 ```
 
@@ -527,7 +527,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: provael/provael@v0.41.0
+      - uses: provael/provael@v0.41.1
         with:
           # `none` is the benign control: without it an ASR has no false-positive baseline,
           # and the release gate cannot reach `pass`. It never moves the adversarial ASR.
@@ -686,11 +686,13 @@ perturbations did not move it (0%) — an honest null on this suite.
 > **Scope (honest).** Simulation only. **Ten `libero_object` tasks, 5 seeds per (task, arm),
 > 350 measured episodes** — read the CIs, not just the point estimates, and note the interval is
 > clustered over tasks. Only the **instruction** family transfers to the real model so far.
-> **The predicate is uncalibrated**: `CALIBRATED_ZONES` is empty, so all ten tasks were scored
+> **The predicate is uncalibrated**: no calibration is adopted, so all ten tasks were scored
 > against the same default keep-out box, which overlaps the reachable benign workspace and is why
-> the benign arm trips at all. As of this release that fallback warns at runtime and can be refused
-> outright with `PROVAEL_REQUIRE_CALIBRATED=1`; the calibration itself is still owed
-> ([#136](https://github.com/provael/provael/issues/136)). `provael calibrate` fits a per-task
+> the benign arm trips at all. Ten per-task fits now ship inside the package and are **withheld
+> rather than absent** — `provael doctor` names them and says why, because "not fitted yet" and
+> "fitted, measured and rejected" are different states and only one is still waiting on a run. That
+> fallback warns at runtime and can be refused outright with `PROVAEL_REQUIRE_CALIBRATED=1`; the
+> calibration itself is still owed ([#136](https://github.com/provael/provael/issues/136)). `provael calibrate` fits a per-task
 > predicate from the policy's own benign rollouts to a benign-FPR target, and `provael attack
 > --calib` reports a calibrated redirection rate with its 95% CI and the benign FPR as its control
 > — see [Calibration](#calibration). It has never been run on LIBERO. The real SmolVLA × LIBERO
@@ -969,7 +971,7 @@ same metadata, for pasting straight into a `.bib` file:
 @software{jain_provael_2026,
   author  = {Jain, Sattyam},
   title   = {Provael: red-teaming Vision-Language-Action robot policies in simulation},
-  version = {0.41.0},
+  version = {0.41.1},
   year    = {2026},
   doi     = {10.5281/zenodo.21984184},
   url     = {https://doi.org/10.5281/zenodo.21984184},

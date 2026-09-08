@@ -15,9 +15,12 @@ from rich.markup import escape
 from provael import __version__
 from provael.cli._shared import _out, app
 from provael.watch import (
+    STALE_AFTER_RELEASES,
     STALE_DAYS,
     age_days,
     latest_measurement,
+    published_measurement,
+    releases_behind,
 )
 
 
@@ -43,7 +46,11 @@ def doctor(
 
     from provael.policies.registry import POLICIES, SCAFFOLDING_POLICIES
     from provael.suites import SUITES, make_suite
-    from provael.suites.keepout_zones import CALIBRATED_ZONES, REQUIRE_CALIBRATED_ENV
+    from provael.suites.keepout_zones import (
+        CALIBRATED_ZONES,
+        REQUIRE_CALIBRATED_ENV,
+        WITHHELD_CALIBRATIONS,
+    )
 
     def row(label: str, value: str, note: str = "") -> None:
         suffix = f"  [dim]{escape(note)}[/dim]" if note else ""
@@ -106,10 +113,10 @@ def doctor(
     # ── the two things that silently change what a number means ──────────────
     _out.print("\n[bold]predicate & freshness[/bold]")
     strict = os.environ.get(REQUIRE_CALIBRATED_ENV)
+    # Both halves come from the loaded artifacts, never from a literal. The row used to print the
+    # string "none" for two different states — nothing fitted yet, and fitted then measured and
+    # rejected — and only one of those is still waiting on work.
     if CALIBRATED_ZONES:
-        # Adopted zones carry the evidence that earned them, so print it. A count alone is what
-        # this row used to be, and a count cannot distinguish a predicate that catches things from
-        # one that cannot fire — which is the state the ten libero_object fits were in.
         versions = sorted({c.tool_version for c in CALIBRATED_ZONES.values()})
         weakest = min(c.detection_rate for c in CALIBRATED_ZONES.values())
         colour = "green" if weakest > 0.0 else "red"
@@ -129,25 +136,55 @@ def doctor(
     else:
         row(
             "calibrated zones",
-            "[yellow]none adopted[/yellow]",
+            "[yellow]0 adopted[/yellow]",
             "every keep-out run uses the DEFAULT box — see issue #136",
         )
-        # NOT "not done yet", which is what this row implied for months. Ten fits exist and are
-        # committed; they are unadopted because they were measured and caught nothing. Saying that
-        # here is the difference between a reader thinking the work is pending and knowing it was
-        # done and rejected.
-        _out.print(
-            "    [dim]ten libero_object fits exist under results/calibration/ and are NOT"
-            " adopted:[/dim]\n"
-            "    [dim]the fitted hazard face flagged 0/12 attacked episodes on the one task"
-            " with[/dim]\n"
-            "    [dim]trajectories to check — see studies/keepout_face_selection/[/dim]"
+
+    if WITHHELD_CALIBRATIONS:
+        # Named individually rather than counted, because "which tasks" is the question a reader
+        # asks next and a count cannot answer it.
+        by_reason: dict[str, list[str]] = {}
+        for task, held in sorted(WITHHELD_CALIBRATIONS.items()):
+            by_reason.setdefault(held.reason, []).append(task)
+        row(
+            "withheld fits",
+            f"[yellow]{len(WITHHELD_CALIBRATIONS)}[/yellow]",
+            "loaded and checked, NOT adopted — measured and rejected, not merely missing",
         )
+        for reason, tasks in by_reason.items():
+            _out.print(f"    [dim]{escape(', '.join(tasks))}[/dim]")
+            _out.print(f"      [dim]{escape(reason)}[/dim]")
+
     row(
         REQUIRE_CALIBRATED_ENV,
         f"[green]{strict}[/green]" if strict else "[yellow]unset[/yellow]",
         "set it to 1 to make an uncalibrated predicate a hard error",
     )
+
+    # The SECOND staleness window, and the one the age row below cannot see. www.provael.com has
+    # carried this on every page; the CLI had no way to say it, so a reader running `provael doctor`
+    # on a green badge had no signal that the published number was measured nine minors ago.
+    published = published_measurement()
+    if published is None:
+        row("published result", "[red]none[/red]", "no real-model measurement is committed")
+    else:
+        gap = releases_behind(published.tool_version, __version__)
+        if gap is None:
+            row(
+                "published result",
+                f"measured with [yellow]v{published.tool_version}[/yellow]",
+                f"release gap unknown — cannot compare against {__version__}",
+            )
+        else:
+            plural = "release" if gap == 1 else "releases"
+            stale = gap > STALE_AFTER_RELEASES
+            row(
+                "published result",
+                f"measured with [{'red' if stale else 'green'}]v{published.tool_version}"
+                f"[/{'red' if stale else 'green'}]",
+                f"{gap} {plural} behind {__version__}; window is {STALE_AFTER_RELEASES}"
+                + (" — PAST IT" if stale else ""),
+            )
 
     latest_run = latest_measurement(Path("watch"))
     age = age_days(latest_run)

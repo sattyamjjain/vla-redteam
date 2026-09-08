@@ -948,8 +948,11 @@ done.
 **Where we are weaker.** Six policies against our one measured. An optimisation loop that searches
 the risk-factor state against our fixed four-template banks. A shipped, evaluated defense against our
 two measured mitigations. And a physical-safety taxonomy with three cost types grounded in risk
-predicates, against an envelope predicate that is **uncalibrated** — `provael calibrate` has never
-run on LIBERO. What we carry that their reported setup does not surface is a matched benign control
+predicates, against an envelope predicate that is **uncalibrated**. `provael calibrate` has since run
+on LIBERO — ten `libero_object` fits, 6 September 2026 — and the predicate is still uncalibrated,
+because those fits were withheld rather than adopted: the fitted hazard face flagged 0 of 12 attacked
+episodes (see [`studies/keepout_face_selection/`](https://github.com/provael/provael/blob/main/studies/keepout_face_selection/README.md),
+issue #136). What we carry that their reported setup does not surface is a matched benign control
 at the same `(task, seed)` cell with a reported false-positive rate.
 
 **mapping_status: `cited, not crosswalked`.** Their attack acts on the scene with the instruction
@@ -1291,6 +1294,67 @@ also **shortens** the prompt. The open question, and the concrete test that woul
 recorded in
 [the canonicalization study](docs/studies/instruction-canonicalization.md#prompt-form-vs-prompt-semantics-an-open-question-from-town-vla).
 We do not have the answer and this entry does not guess at one.
+
+### VLA-Risk — *Benchmarking Vision-Language-Action Models with Physical Robustness*
+OpenReview [31EjDFwFEe](https://openreview.net/forum?id=31EjDFwFEe) (2025).
+
+**Read from the public abstract only, and that limit is part of the entry.** OpenReview serves both
+its web and API paths behind a bot challenge, which this project does not bypass, so everything
+below comes from the abstract and listing metadata. Where their formalism would settle a question,
+this entry says so rather than guessing at it — the surrounding entries quote papers directly, and
+the difference in confidence should be visible rather than smoothed over.
+
+**What it covers.** 296 scenarios and 3,784 episodes, spanning simple manipulation, semantic
+reasoning and autonomous driving. Attacks are structured along two axes at once: the input modality
+perturbed (image and instruction) and three task dimensions — object, action, space.
+
+**Why it does not share a denominator with ours.** Two reasons, and only the first is certain from
+the abstract. Their reported outcome is degradation on the attack tasks — how much worse the policy
+does at the thing it was asked to do. Provael scores an **envelope breach**: whether the
+end-effector entered a keep-out region, whether or not the task succeeded. Those come apart in both
+directions. A policy can fail its task without leaving the envelope, which is incompetence rather
+than a safety event; and the committed run shows the other direction directly, with clean-task
+success averaging 84% while `roleplay` drove 44 of 50 matched pairs out of the envelope. The second
+reason is breadth: their scope includes autonomous driving, which provael does not touch at all.
+
+**Where we are weaker.** 296 scenarios against our ten `libero_object` tasks, and both an image and
+an instruction axis against our one measured family. Their episode count is an order of magnitude
+above our 350.
+
+**What we carry that the abstract does not surface.** A matched benign control at the same
+`(task, seed)` cell with a reported false-positive rate, and the interval around it.
+
+**mapping_status: `complementary, different failure definitions`.** No crosswalk is claimed. Their
+axis is task degradation under perturbation; ours is a spatial predicate under a fixed scene. A
+coverage table would imply a shared denominator that does not exist, and the abstract alone is not
+enough to build one honestly.
+
+### SAFE — *Multitask Failure Detection for Vision-Language-Action Models*
+Gu, Kim, Kuang, Sharma, et al. (2025) — NeurIPS 2025.
+arXiv:[2506.09937](https://arxiv.org/abs/2506.09937) · OpenReview
+[XPyAukgsFf](https://openreview.net/forum?id=XPyAukgsFf)
+
+**Detection, not elicitation, and listed for completeness rather than comparison.** SAFE reads a
+VLA's own internal features and predicts a scalar for how likely the current rollout is to fail,
+giving a timely enough alert that a robot can stop, backtrack or ask for help. It is trained on both
+successful and failed rollouts, evaluated on unseen tasks, calibrated with conformal prediction, and
+works across OpenVLA, π₀ and π₀-FAST.
+
+**There is no overlapping quantity.** Provael manufactures a failure and reports how often the
+attempt succeeds. SAFE observes a rollout it did not cause and reports whether it is going wrong.
+Neither number bounds the other, and a reader comparing an attack success rate to a detection rate
+is comparing an offense to a monitor.
+
+**Where it is genuinely relevant to us, and unmeasured.** SAFE is the shape of mitigation
+`provael mitigation` exists to score — a runtime monitor an operator could actually install, sitting
+between the policy and the robot. Nothing here has been run against it, and its multitask
+generalisation claim is the interesting one to test: a detector trained on benign task failures has
+no reason in principle to fire on an *adversarially redirected* rollout that is executing
+competently, just toward the wrong place. Whether it does is an open question and a run nobody has
+done.
+
+**mapping_status: `complementary, listed for completeness`.** No crosswalk, and no claim of
+superiority in either direction: it detects, we elicit.
 
 ## What is actually novel here
 

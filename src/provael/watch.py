@@ -24,6 +24,7 @@ cadence went daily, and the same trap applies here.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -48,6 +49,19 @@ SHIELDS_SCHEMA_VERSION = 1
 #: becomes "nobody has measured this month".
 FRESH_DAYS = 2
 STALE_DAYS = 7
+
+#: Minor releases the PUBLISHED measurement may fall behind the current version before it is stale.
+#:
+#: A SECOND WINDOW, MEASURING SOMETHING THE AGE WINDOW CANNOT. `STALE_DAYS` asks when anything was
+#: last measured; a one-episode timing probe satisfies it. This asks whether the number a reader is
+#: actually shown was measured against code that still exists. The two came apart on 8 September
+#: 2026: a $0.06 probe put the badge at "today" while the published 44/50 result was nine minors
+#: old, and only this window could say so.
+#:
+#: www.provael.com holds its own copy of this threshold in `src/lib/freshness.ts`. That is a
+#: duplicate policy constant across two repos and it can drift; the fix is for the site to read this
+#: one out of a published artifact, which is a cross-repo contract change and is not made here.
+STALE_AFTER_RELEASES = 2
 
 WATCH_LOG = "watch.jsonl"
 BADGE_JSON = "freshness.json"
@@ -224,6 +238,66 @@ def counts_as_measurement(record: MeasurementRecord) -> bool:
     return record.policy not in FIXTURE_POLICIES
 
 
+def _minor(version: str) -> tuple[int, int] | None:
+    """``"0.32.0"`` -> ``(0, 32)``. ``None`` for anything that is not ``major.minor[.patch]``."""
+    parts = version.split(".")
+    if len(parts) < 2:
+        return None
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+
+
+def published_measurement(
+    records: Sequence[MeasurementRecord] | None = None,
+    *,
+    results_dir: Path = RESULTS_DIR,
+) -> MeasurementRecord | None:
+    """The real-model measurement a reader is actually shown — the largest campaign, not the newest.
+
+    WHY NOT THE NEWEST. :func:`latest_measurement` answers "when was anything last measured", and a
+    one-episode timing probe answers it. On 8 September 2026 a $0.06 probe made the freshness badge
+    read "today" while the published 44/50 headline was still the ten-task suite fitted nine minors
+    earlier. Reporting the newest record's version would have said 0.40.0 and been useless — worse
+    than useless, because it would have looked reassuring.
+
+    So: among real recorded measurements, the version behind the LARGEST body of episodes wins, and
+    the newest record at that version represents it. A campaign of 350 episodes is what a published
+    rate rests on; a probe cannot displace it, and a genuinely bigger run at a newer version closes
+    the gap on its own without anyone editing a threshold.
+
+    Returns ``None`` when nothing real has been measured, which is not the same as a gap of zero.
+    """
+    real = [
+        r
+        for r in (records if records is not None else measurements_from_results(results_dir))
+        if counts_as_measurement(r) and r.recorded
+    ]
+    if not real:
+        return None
+    weight: dict[str, int] = {}
+    for r in real:
+        weight[r.tool_version] = weight.get(r.tool_version, 0) + r.attempts
+    # Ties break toward the NEWER version: two equally sized campaigns means the older one is no
+    # longer the only thing carrying the claim.
+    best = max(weight, key=lambda v: (weight[v], _minor(v) or (0, 0)))
+    return max((r for r in real if r.tool_version == best), key=lambda r: r.measured_at)
+
+
+def releases_behind(measured_with: str, current: str) -> int | None:
+    """Minor releases between the version a result was measured with and the current one.
+
+    ``None`` when either version is unparseable, so an odd string reports "unknown" rather than
+    silently scoring zero — a gap of zero is the reassuring answer and must never be the fallback.
+    Negative gaps clamp to 0: a measurement taken on an unreleased build is ahead, not stale.
+    """
+    a, b = _minor(measured_with), _minor(current)
+    if a is None or b is None:
+        return None
+    return max(0, (b[0] - a[0]) * 1000 + (b[1] - a[1]))
+
+
 def latest_measurement(
     watch_dir: Path, *, results_dir: Path = RESULTS_DIR
 ) -> MeasurementRecord | None:
@@ -324,6 +398,9 @@ __all__ = [
     "BADGE_JSON",
     "FRESH_DAYS",
     "STALE_DAYS",
+    "STALE_AFTER_RELEASES",
+    "published_measurement",
+    "releases_behind",
     "WATCH_LOG",
     "LEGACY_STATE",
     "MeasurementRecord",

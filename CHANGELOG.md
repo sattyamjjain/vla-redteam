@@ -6,6 +6,76 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.41.1] — 2026-09-08
+
+### Added
+
+- **Adopted calibrations load from a packaged directory, so a re-calibration is a file drop rather
+  than a code change.** `CALIBRATED_ZONES` was a hand-written literal that stayed `{}` while ten
+  fitted calibrations sat committed under `results/calibration/`. Nothing connected the two, so the
+  dict could stay empty forever with every check green — which is issue #136's shape.
+
+  Artifacts now load at import from `src/provael/suites/calibrations/`, **not** from
+  `results/calibration/`. That is load-bearing rather than tidy: `pyproject.toml` ships
+  `packages = ["src/provael"]`, so `results/` is absent from a wheel, and reading the predicate from
+  there would make the boundary every ASR is scored against differ between a source checkout and a
+  `pip install` — one published number resting on two different predicates depending on how the
+  reader installed the tool. This repository already learned that in 0.26.0 and wrote it into
+  `suites/__init__.py`. `test_adoption_does_not_depend_on_an_unpackaged_directory` holds it.
+
+  **Nothing is adopted, and that is the finding rather than an omission.** Loading is gated on
+  evidence the predicate can fire: an artifact needs `spatial_fit.detection_rate > 0`. The ten
+  `libero_object` fits carry no `spatial_fit` at all — they predate the adversarial arm — and the
+  one that could be replayed against real trajectories flagged **0 of 12** attacked episodes while
+  another face flagged 5. Five of the six candidate faces score the same 0.0 benign false-positive
+  rate, so a low benign rate is not evidence a boundary works. Adopting them would install a
+  predicate that scores a perfect ASR against something it can never flag.
+
+  So the fits are **withheld, not absent**, and the difference is now visible: they ship in the
+  package, are loaded and checked on every import, and `provael doctor` names all ten with the
+  reason. "Not fitted yet" and "fitted, measured and rejected" stopped looking the same.
+
+  **What this does and does not fix.** It fixes the drift — `test_calibration_adoption.py` fails if
+  a committed fit is neither adopted nor withheld, in either direction, so a future calibration
+  cannot be produced and quietly ignored. It does **not** fix the predicate. The benign control
+  still fires 2/50 against the default box, the published ASR is still scored against a hand-picked
+  box that overlaps the reachable benign workspace, and #136 stays open. One GPU arm with the zones
+  active, measuring benign and adversarial together, is what changes that.
+
+- **`provael doctor` reports the published-measurement window the website has carried all along.**
+  Every page on www.provael.com says the published result was measured with v0.32.0, nine releases
+  ago, past the project's own 2-release window. The CLI had no way to say it, so `provael doctor` on
+  a green freshness badge gave a reader no signal at all — and the badge is green today because a
+  $0.06 one-episode timing probe reset it while the 44/50 headline stayed nine minors old.
+
+  Two windows now sit side by side and disagree, which is the point: `last measured 0 days ago,
+  within 7` above `published result measured with v0.32.0, 9 releases behind 0.41.0; window is 2 —
+  PAST IT`. `published_measurement()` picks the version behind the **largest** real campaign rather
+  than the newest record, precisely so a probe cannot displace a 350-episode run; a genuinely bigger
+  run at a newer version closes the gap on its own with no threshold edit.
+
+  The 2-release threshold now exists in `watch.py`. The website still holds its own copy in
+  `src/lib/freshness.ts`, so this is one policy constant in two repositories and it can drift. The
+  fix is for the site to read a published artifact instead, which is a cross-repo contract change
+  and is not made here.
+
+### Changed
+
+- **Two prior-art entries added: VLA-Risk and SAFE.** VLA-Risk (OpenReview 31EjDFwFEe) reports
+  degradation on its attack tasks where provael reports an envelope breach, and the two come apart
+  in both directions — the committed run has 84% clean-task success alongside 44/50 envelope exits.
+  Read from the public abstract only, because OpenReview serves both its web and API paths behind a
+  bot challenge this project does not bypass; the entry says so rather than implying a closer
+  reading than happened. SAFE (arXiv:2506.09937, NeurIPS 2025) is failure *detection* from a VLA's
+  internal features — no overlapping quantity with an elicitation rate, and listed for completeness.
+  Neither entry claims superiority in either direction.
+
+  RedVLA was **not** added: it is already covered at length, quoting their own formalism for why the
+  denominators differ (they fix the instruction and perturb the initial state; provael does the
+  opposite). A shorter row would have contradicted it — the channel is the scene, not the
+  instruction. That entry's claim that "`provael calibrate` has never run on LIBERO" is corrected
+  here: it ran on 6 September and the predicate is still uncalibrated, for the reason above.
+
 ## [0.41.0] — 2026-09-08
 
 ### Changed
