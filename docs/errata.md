@@ -6,11 +6,15 @@ from this page once added — an erratum that disappears is worse than the error
 If you hold a Provael artifact, check here before relying on a regulatory date in it.
 
 **On the numbering.** IDs are one shared space across this document and the mirror at
-[provael.com/errata](https://www.provael.com/errata). E-2026-06 and E-2026-07 are recorded there
-and not here: both are corrections to website surfaces, raised on 6 September 2026. E-2026-07
-covers the same ISO 10218 / IEC 62443 claim this document records as E-2026-05, on four site pages
-rather than two repository documents. The gap is a mirroring drift, not a removed entry — nothing
-on this page is ever removed.
+[provael.com/errata](https://www.provael.com/errata), and this document is the maintained source.
+E-2026-06 and E-2026-07 were raised on 6 September 2026 against website surfaces and recorded only
+on the mirror; they are back-filled here so the two agree entry-for-entry.
+
+**E-2026-07 and E-2026-05 are the same correction under two IDs.** Both record that ISO 10218:2025
+does not defer its cybersecurity detail to IEC 62443 — 05 against two repository documents, 07
+against four website pages, raised five days apart. Issuing a second ID was the mistake, and it is
+not fixable: both are published, and this page is append-only. So the duplication is stated rather
+than renumbered, and E-2026-09 is the next free ID.
 
 ---
 
@@ -360,6 +364,99 @@ a sub-deadline to a secondary summary instead of the OJ text. This one is about 
 *relationship* taken from secondary description rather than from the standard's own Clause 2. The
 stronger version in circulation, "ISO 10218 requires IEC 62443 SL2", is wrong, and a claim an
 assessor can falsify by opening Clause 2 costs more than any count on this site.
+
+---
+
+## E-2026-06 — A correction to the CRA sub-deadline source was reverted while fixing a link label
+
+**Status:** restored the same day · the four deadlines themselves were correct throughout
+**Date raised:** 6 September 2026
+**Affects:** provael.com/regulatory-clock, /regulatory-clock.json and
+/compliance/cra-incident-reporting, as published for roughly seven hours on 6 September 2026. No
+deadline, no measured result and no signed artifact is affected.
+
+### What is wrong
+
+The CRA Article 14 sub-deadlines were published citing the Commission's CRA summary as their source.
+That is the document [E-2026-04](#e-2026-04--the-cra-severe-incident-final-report-was-published-with-the-wrong-start-point)
+moved them **off**, five days earlier, because its phrasing does not carry the distinction the four
+rows encode — the two final reports run from different events.
+
+The rows on the page were correct the whole time. What was wrong was the citation under them: a
+reader checking the deadlines against the cited source would not have found the distinction there,
+and could reasonably have concluded the page had invented it.
+
+### Why it stopped being true
+
+`/compliance/cra-incident-reporting` closed with two source links carrying different labels and the
+same URL — "Regulation (EU) 2024/2847 on EUR-Lex" and "Commission CRA summary" both pointing at the
+Official Journal. That is a real defect, and it was fixed by moving the URL to match the label. **The
+label was the wrong half.** The link text lived in markup on two pages while the URL lived in JSON,
+so the two were editable apart and neither one carried the reason the other existed. Nothing was red.
+
+### What is correct
+
+| Field | Superseded value | Correct value |
+| --- | --- | --- |
+| `reportingSubDeadlinesSource` | `https://digital-strategy.ec.europa.eu/en/policies/cra-reporting` | **`https://eur-lex.europa.eu/eli/reg/2024/2847/oj`** |
+
+### What a reader should do
+
+Nothing to re-check in a runbook: the 24-hour, 72-hour, 14-day and one-month deadlines and their
+start points are unchanged and were correct throughout. If you cited this page's source link rather
+than the deadlines, cite Article 14 of the Official Journal text instead. The link label now travels
+in the clock data beside the URL so the two cannot be edited apart, and the website's
+`scripts/check-clock-sources.mjs` fails the build if a sub-deadline is ever pinned to a summary of
+the instrument rather than the instrument.
+
+---
+
+## E-2026-07 — Four website surfaces said ISO 10218:2025 defers its cyber detail to IEC 62443
+
+**Status:** corrected on every surface · the phrasings are now blocked by the website build
+**Date raised:** 6 September 2026
+**Affects:** provael.com/compliance/iso-10218, /defenses, /compare/physical-ai-safety-stacks and
+/regulatory-clock (with its JSON), as published up to 6 September 2026. No measured result and no
+signed artifact is affected: the control identifiers, the `iec-62443` requirement key and the emitted
+`routes_to` field are a published contract and were never the thing that was wrong.
+
+**This is the same correction as [E-2026-05](#e-2026-05--two-documents-said-iso-102182025-defers-its-cyber-detail-to-iec-62443),
+under a second ID.** 05 records it against two repository documents; this records it against four
+website pages, raised five days later. Issuing a second ID was a mistake, and both are published on
+an append-only page, so it is recorded rather than renumbered.
+
+### What is wrong
+
+Four pages stated that the 2025 revision of ISO 10218 introduces cybersecurity clauses and hands the
+detailed requirements to the IEC 62443 series. It does not. Clause 2, *Normative references*, of
+ISO 10218-1:2025 lists ISO 3864-x, ISO 4413/4414, ISO 7010, ISO 9283, ISO 12100, ISO 13732-x,
+ISO 13849-1:2023, ISO 13850, ISO 14118/14119/14120, ISO 19353, ISO 20607, ISO 20643 and IEC 60073.
+IEC 62443 is not among them; it appears in the informative Bibliography, alongside IEC TR 63074.
+
+The standard's own Foreword says the revision adds "requirements for cybersecurity to the extent
+that it applies to industrial robot safety" — it **adds** them, it does not delegate them.
+
+### Why it stopped being true
+
+The claim is a common secondary-source summary of what the 2025 revision did, and it was transcribed
+rather than read against the standard. It then spread by being restated: one phrasing in a compliance
+catalogue, a second in a defenses table, a third in a comparison page's answer, a fourth in the
+machine-readable clock. Provael's own mapping onto an IEC 62443 SL2 target is legitimate and stays;
+presenting it as something ISO 10218 routes to was not.
+
+### What is correct
+
+| Field | Superseded value | Correct value |
+| --- | --- | --- |
+| ISO 10218-1/-2:2025, relationship to IEC 62443 | introduces cybersecurity clauses and defers the detailed requirements to IEC 62443 | **adds cybersecurity requirements to the extent they apply to industrial robot safety; IEC 62443 appears only in the informative Bibliography** |
+
+### What a reader should do
+
+If you were treating a Provael IEC 62443 view as inherited from ISO 10218, it is not: an assessor
+reading ISO 10218 inherits nothing about IEC 62443, and the cyber requirements are in the document
+they already hold. The four superseded phrasings are in the website build's forbidden-string list, so
+none of them can be reintroduced on any page.
+
 
 ---
 
