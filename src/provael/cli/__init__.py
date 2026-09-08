@@ -31,7 +31,28 @@ from provael.cli._shared import app
 # two directives just stop the tooling from making it on its own.
 #
 # isort: off
-from provael.cli import _shared  # noqa: F401
+from provael.cli import core  # noqa: F401
+from provael.cli import crosswalk  # noqa: F401
+from provael.cli import listings  # noqa: F401
+from provael.cli import run  # noqa: F401
+from provael.cli import reporting  # noqa: F401
+from provael.cli import certify  # noqa: F401
+from provael.cli import serve  # noqa: F401
+from provael.cli import evidence  # noqa: F401
+from provael.cli import calibrate  # noqa: F401
+from provael.cli import bounds  # noqa: F401
+from provael.cli import status  # noqa: F401
+from provael.cli import offline  # noqa: F401
+from provael.cli import submit  # noqa: F401
+from provael.cli import integrity  # noqa: F401
+from provael.cli import defenses  # noqa: F401
+from provael.cli import doctor  # noqa: F401
+
+# The two sub-app groups. Their position here does not affect the TOP-LEVEL order — Typer keeps
+# `registered_commands` and `registered_groups` in separate lists and renders every command before
+# every group — but the order WITHIN each group is still this file's business.
+from provael.cli import leaderboard  # noqa: F401
+from provael.cli import studies  # noqa: F401
 
 # isort: on
 
